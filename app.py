@@ -16,7 +16,7 @@ from PIL import Image
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = APP_DIR / 'data'
 DATA_DIR.mkdir(exist_ok=True)
-DEFAULT_PDF = APP_DIR / 'Manuel_Maintenance_SAN_Projet_Integrateur.pdf'
+DEFAULT_PDF = APP_DIR / 'corpus' / 'Manuel_Maintenance_SAN_Projet_Integrateur.pdf'
 
 st.set_page_config(page_title='MaintiDoc | SAN', page_icon='🗂️', layout='wide')
 st.title('MaintiDoc · Assistant documentaire SAN')
@@ -45,8 +45,10 @@ def parse_pdf(data: bytes, source: str):
         try:
             found = page.find_tables()
             for j, table in enumerate(found.tables, 1):
-                rows = table.extract()
-                clean = [[str(v or '').strip() for v in row] for row in rows]
+                # table.extract() supprime les espaces étroits ("CheminFCdegrade") :
+                # on relit le texte de chaque cellule à partir de sa zone.
+                clean = [[' '.join(page.get_textbox(pymupdf.Rect(c)).split()) if c else ''
+                          for c in row.cells] for row in table.rows]
                 if not clean:
                     continue
                 record = {'id': f'P{p:02d}-TAB{j:02d}', 'page': p, 'type': 'tableau',

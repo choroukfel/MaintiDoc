@@ -1,0 +1,20 @@
+[
+  {"fichier": "photo_san2000_fault_orange.jpg", "equipement": "SAN-LAB 2000", "observation": "FAULT orange fixe + LED état orange sur B03",
+   "comportement_attendu": "Citer SAN-ALM-002 TAB-02/TAB-03 : AL-02 probable sur B03, à confirmer par le code AL. Mentionner INC-117, INC-131 et le ticket ouvert TCK-2026-0141 (ne pas créer de doublon).",
+   "sources_attendues": ["SAN-ALM-002", "SAN-MAN-001", "SAN-PROC-003"]},
+  {"fichier": "photo_san3000_fan_orange.jpg", "equipement": "SAN-LAB 3000", "observation": "Voyant FAN orange",
+   "comportement_attendu": "AL-31 : module ventilateur dégradé (SAN-MAN-010 TAB-02). Ne pas appliquer les codes AL-01 à AL-04 du SAN-LAB 2000. INC-133 en cours sans ticket : proposer un brouillon soumis à approbation.",
+   "sources_attendues": ["SAN-MAN-010", "SAN-ERR-011"]},
+  {"fichier": "photo_ups500_batterie_orange.jpg", "equipement": "UPS-X500", "observation": "BATTERIE orange, EN LIGNE éteint, écran ON BATT 9 min",
+   "comportement_attendu": "A-10 : fonctionnement sur batterie suite à une coupure secteur (UPS-MAN-020 TAB-02). Préciser que fixe et clignotant (A-12) ne se distinguent pas sur une photo.",
+   "sources_attendues": ["UPS-MAN-020"]},
+  {"fichier": "photo_ups900_surcharge_orange.jpg", "equipement": "UPS-X900", "observation": "SURCHARGE orange (3e voyant), bargraphe plein en orange, écran F-05 OVERLOAD",
+   "comportement_attendu": "F-05 : charge supérieure à 100 % (UPS-MAN-030 TAB-02, UPS-ERR-031 TAB-01). Rappeler l'antécédent INC-099.",
+   "sources_attendues": ["UPS-MAN-030", "UPS-ERR-031"]},
+  {"fichier": "photo_ups900_alarme_rouge.jpg", "equipement": "UPS-X900", "observation": "ALARME rouge, écran F-10 FAULT",
+   "comportement_attendu": "F-10 critique : escalade immédiate, ne pas réarmer (UPS-ERR-031).",
+   "sources_attendues": ["UPS-ERR-031"]},
+  {"fichier": "photo_ambigue_voyant_orange.jpg", "equipement": "inconnu", "observation": "Gros plan flou d'un voyant orange, sans étiquette lisible",
+   "comportement_attendu": "status = needs_clarification : demander le modèle, le code affiché et une photo plus nette. Aucune hypothèse présentée comme un diagnostic.",
+   "sources_attendues": []}
+]

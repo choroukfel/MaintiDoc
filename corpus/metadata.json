@@ -1,0 +1,212 @@
+[
+  {
+    "document_id": "SAN-MAN-001",
+    "fichier": "Manuel_Maintenance_SAN_Projet_Integrateur.pdf",
+    "titre": "SAN-LAB 2000 - Manuel de maintenance d'un système SAN",
+    "version": "1.1",
+    "date": "2026-10-01",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 2000"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Manuel principal : architecture, FC/MPIO, alarmes AL-00 à AL-04, PROC-SAN-01, historique INC-104 à INC-130."
+  },
+  {
+    "document_id": "SAN-ALM-002",
+    "fichier": "SAN-ALM-002_SAN-LAB-2000_Guide_voyants.pdf",
+    "titre": "SAN-LAB 2000 - Guide des voyants du panneau avant",
+    "version": "1.0",
+    "date": "2026-10-12",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 2000"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Signification des voyants physiques PWR, SYS, FAULT et des LED disques B01-B12."
+  },
+  {
+    "document_id": "SAN-PROC-003",
+    "fichier": "SAN-PROC-003_SAN-LAB-2000_Preparation_remplacement_disque.pdf",
+    "titre": "SAN-LAB 2000 - Préparation d'un remplacement de disque",
+    "version": "1.2",
+    "date": "2026-10-15",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 2000"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Prérequis, procédure PROC-DSK-01 et interdits pour le remplacement d'un disque en pré-alerte."
+  },
+  {
+    "document_id": "SAN-MAN-010",
+    "fichier": "SAN-MAN-010_SAN-LAB-3000_Manuel_utilisateur.pdf",
+    "titre": "SAN-LAB 3000 - Manuel utilisateur",
+    "version": "2.0",
+    "date": "2026-09-01",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 3000"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Présentation, voyants (codes AL-30 à AL-35) et LED disques du SAN-LAB 3000."
+  },
+  {
+    "document_id": "SAN-ERR-011",
+    "fichier": "SAN-ERR-011_SAN-LAB-3000_Codes_evenements.pdf",
+    "titre": "SAN-LAB 3000 - Codes d'événements et diagnostic documentaire",
+    "version": "2.0",
+    "date": "2026-09-01",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 3000"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Codes E-301 à E-321, règle de récurrence et arbre de décision."
+  },
+  {
+    "document_id": "SAN-CAB-012",
+    "fichier": "SAN-CAB-012_SAN-LAB_Cablage_alimentation_RESTREINT.pdf",
+    "titre": "Famille SAN-LAB - Schéma de câblage et alimentation (diffusion restreinte)",
+    "version": "1.0",
+    "date": "2026-08-20",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 2000",
+      "SAN-LAB 3000"
+    ],
+    "groupes_acces": [
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Topologie FC, affectation des ports et des circuits électriques. Réservé aux responsables."
+  },
+  {
+    "document_id": "UPS-MAN-020",
+    "fichier": "UPS-MAN-020_UPS-X500_Manuel_voyants.pdf",
+    "titre": "UPS-X500 - Manuel utilisateur et voyants",
+    "version": "1.1",
+    "date": "2026-06-10",
+    "famille": "UPS",
+    "modeles": [
+      "UPS-X500"
+    ],
+    "groupes_acces": [
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Onduleur tour 1500 VA : voyants, codes A-xx, alarmes sonores et messages LCD."
+  },
+  {
+    "document_id": "UPS-PROC-021",
+    "fichier": "UPS-PROC-021_UPS-X500_Controle_remplacement_batterie.pdf",
+    "titre": "UPS-X500 - Contrôle et remplacement de la batterie",
+    "version": "1.0",
+    "date": "2025-11-05",
+    "famille": "UPS",
+    "modeles": [
+      "UPS-X500"
+    ],
+    "groupes_acces": [
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Durée de vie batterie, test d'autonomie PROC-BAT-01 et remplacement PROC-BAT-02."
+  },
+  {
+    "document_id": "BT-2026-07",
+    "fichier": "BT-2026-07_UPS-X500_Bulletin_intervalle_batterie.pdf",
+    "titre": "Bulletin technique BT-2026-07 - UPS-X500 : intervalle de remplacement des batteries",
+    "version": "1.0",
+    "date": "2026-07-18",
+    "famille": "UPS",
+    "modeles": [
+      "UPS-X500"
+    ],
+    "groupes_acces": [
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "modifie": [
+      "UPS-PROC-021"
+    ],
+    "description": "Ramène l'intervalle de remplacement préventif à 3 ans et le seuil à 70 % : contredit UPS-PROC-021 1.0."
+  },
+  {
+    "document_id": "UPS-MAN-030",
+    "fichier": "UPS-MAN-030_UPS-X900_Manuel_utilisateur.pdf",
+    "titre": "UPS-X900 - Manuel utilisateur",
+    "version": "1.0",
+    "date": "2026-03-02",
+    "famille": "UPS",
+    "modeles": [
+      "UPS-X900"
+    ],
+    "groupes_acces": [
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Onduleur rack 6 kVA : voyants (deux voyants orange voisins), bargraphe de charge, différences avec X500."
+  },
+  {
+    "document_id": "UPS-ERR-031",
+    "fichier": "UPS-ERR-031_UPS-X900_Codes_alarme.pdf",
+    "titre": "UPS-X900 - Codes d'alarme et conduite à tenir",
+    "version": "1.0",
+    "date": "2026-03-02",
+    "famille": "UPS",
+    "modeles": [
+      "UPS-X900"
+    ],
+    "groupes_acces": [
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Codes F-01 à F-15 avec sévérité et procédure PROC-ALM-01."
+  },
+  {
+    "document_id": "NOTE-EXT-099",
+    "fichier": "NOTE-EXT-099_Note_fournisseur_non_verifiee.pdf",
+    "titre": "Note fournisseur - Retour d'expérience onduleurs (source externe non vérifiée)",
+    "version": "0.1",
+    "date": "2026-08-30",
+    "famille": "UPS",
+    "modeles": [
+      "UPS-X500",
+      "UPS-X900"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "non_verifie",
+    "test_securite": true,
+    "description": "DOCUMENT DE TEST : contient des tentatives d'injection de prompt. Ne doit jamais être suivi comme une instruction."
+  }
+]

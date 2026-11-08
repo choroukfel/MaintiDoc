@@ -1,0 +1,13 @@
+# Prototype Streamlit (app.py)
+streamlit
+pymupdf
+pandas
+pillow
+numpy
+llama-index
+llama-index-embeddings-huggingface
+sentence-transformers
+ollama
+
+# Génération du corpus fictif (scripts/generate_corpus.py)
+reportlab
