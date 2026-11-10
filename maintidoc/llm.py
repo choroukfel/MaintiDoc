@@ -19,6 +19,10 @@ class BudgetExceeded(RuntimeError):
     pass
 
 
+class LLMUnavailable(ValueError):
+    """Modèle injoignable ou délai dépassé : pas de nouvel essai (contrairement à une sortie JSON invalide)."""
+
+
 @lru_cache
 def load_prompt(name: str) -> dict:
     data = yaml.safe_load((config.PROMPTS_DIR / f'{name}.yaml').read_text(encoding='utf-8'))
@@ -50,9 +54,12 @@ class OllamaVLM:
         if images:
             msg['images'] = images
         t = time.time()
-        res = self.client.chat(model=self.model, messages=[{'role': 'system', 'content': p['system']}, msg],
-                               format=schema.model_json_schema(), keep_alive='15m',
-                               options={'temperature': 0, 'num_ctx': config.NUM_CTX, 'num_predict': num_predict})
+        try:
+            res = self.client.chat(model=self.model, messages=[{'role': 'system', 'content': p['system']}, msg],
+                                   format=schema.model_json_schema(), keep_alive='15m',
+                                   options={'temperature': 0, 'num_ctx': config.NUM_CTX, 'num_predict': num_predict})
+        except Exception as ex:  # délai dépassé, serveur arrêté...
+            raise LLMUnavailable(f'Modèle indisponible : {type(ex).__name__}') from ex
         stats = {'prompt': prompt_name, 'seconds': round(time.time() - t, 2),
                  'prompt_tokens': res.prompt_eval_count, 'output_tokens': res.eval_count}
         try:

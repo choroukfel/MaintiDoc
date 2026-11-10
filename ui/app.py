@@ -81,7 +81,7 @@ if out:
                 st.write(f"**{c['document_id']}** · page {c['page']} · {c['element_id']}")
                 img = api('GET', f"/documents/{c['document_id']}/pages/{c['page']}", st.session_state['token'])
                 if img.status_code == 200:
-                    st.image(img.content, use_container_width=True)
+                    st.image(img.content, width='stretch')
                 else:
                     st.warning(f'Page non affichable ({img.status_code})')
     if out.get('history') is not None:

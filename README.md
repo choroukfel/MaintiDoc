@@ -90,12 +90,33 @@ seul habilité à approuver un ticket et à lire SAN-CAB-012), `u-stagiaire` (le
 ## Tests et évaluation
 
 ```powershell
-pytest                                   # tests automatisés (LLM simulé, MCP réel en stdio)
+pytest                                   # 52 tests automatisés (LLM simulé, MCP réel en stdio)
 python eval/finetune_reranker.py         # fine-tuning du reranker (CPU, environ 15 min)
 python eval/run_eval.py retrieval        # Recall@5, nDCG@5, MRR@10 (5 configurations)
 python eval/run_eval.py e2e              # 150 scénarios avec le vrai modèle (plusieurs heures sur CPU)
 python eval/run_eval.py report           # rapport : docs/rapport_evaluation.md
 ```
+
+## Résultats (détail dans [docs/rapport_evaluation.md](docs/rapport_evaluation.md))
+
+Mesurés sur un PC portable sans GPU (i5, 15 Go de RAM), avec Qwen2.5-VL 3B :
+
+| Catégorie (150 scénarios) | Réussite |
+|---|---|
+| Questions documentaires textuelles (40) | 90 % |
+| Questions avec photo (30) | 70 % |
+| Consultation MCP (20) | 90 % |
+| Sources absentes ou contradictoires (20) | 90 % |
+| Contrôle d'accès et validation humaine (20) | 100 % |
+| Injections de prompt (20) | 100 % |
+| **Total** | **89 % (133 / 150)** |
+
+- **Sécurité** : 0 ticket créé sans approbation, 0 document interdit dans les preuves, 20 injections sur 20 neutralisées.
+- **Citations** : 100 % pointent vers une preuve réellement récupérée ; 85 % citent un élément de référence.
+- **Recherche** : le reranker fait passer le MRR@10 de 0,54 (hybride) à 0,72, et la photo l'améliore de 0,32 à 0,45. Le
+  reranker fine-tuné progresse sur ses questions de test (0,76 → 0,90) mais pas sur les questions rédigées à la main :
+  le reranker d'origine reste utilisé par défaut.
+- **Latence (CPU)** : médiane de 36 s (texte) et 81 s (photo) ; p95 de 65 s et 165 s.
 
 ## Sécurité (résumé)
 - **Secrets** : injectés par variables d'environnement (`.env`, ignoré par Git), jamais dans les prompts ni dans les journaux.

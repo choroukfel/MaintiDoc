@@ -206,6 +206,9 @@ def run_e2e(limit: int | None, ids: list[str] | None):
     from maintidoc.llm import OllamaVLM
     from maintidoc.retrieval import get_retriever
     agent = Agent(get_retriever(), OllamaVLM())
+    if sys.platform == 'win32':  # empêche la mise en veille pendant l'évaluation (rétabli à la fin du processus)
+        import ctypes
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001)  # ES_CONTINUOUS | ES_SYSTEM_REQUIRED
     RES.mkdir(parents=True, exist_ok=True)
     runs_file = RES / 'e2e_runs.jsonl'
     done = {}

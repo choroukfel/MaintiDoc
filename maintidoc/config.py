@@ -51,5 +51,5 @@ os.environ.setdefault('MAINTIDOC_JWT_SECRET', secrets.token_hex(32))
 APPROVAL_SECRET = os.environ['MAINTIDOC_APPROVAL_SECRET']
 JWT_SECRET = os.environ['MAINTIDOC_JWT_SECRET']
 
-PROMPT_VERSIONS = {'answer': 'answer_v1', 'visual': 'visual_analysis_v1', 'ticket': 'ticket_draft_v1',
+PROMPT_VERSIONS = {'answer': 'answer_v1', 'visual': 'visual_analysis_v2', 'ticket': 'ticket_draft_v1',
                    'evidence_check': 'evidence_check_v1'}

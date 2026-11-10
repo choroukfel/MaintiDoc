@@ -28,6 +28,23 @@ STOP = set('le la les un une des de du d l et ou a au aux en sur pour par que qu
            'comment faire faut dois doit si y'.split())
 
 
+PHOTO_VIEWS = [(0, 1.0, 0.0), (-5, 0.6, 1.2), (5, 0.6, 1.2), (0, 0.45, 1.2)]  # (rotation, luminosité, flou)
+CLIP_CONFIDENT_MARGIN = 0.015  # calibré : photo ambiguë 0,007 ; photos nettes 0,02 à 0,12
+
+
+def photo_views(im: Image.Image) -> list[Image.Image]:
+    from PIL import ImageEnhance, ImageFilter
+    out = []
+    for angle, bright, blur in PHOTO_VIEWS:
+        v = im.rotate(angle, expand=True, fillcolor=(58, 54, 50)) if angle else im
+        if bright != 1.0:
+            v = ImageEnhance.Brightness(v).enhance(bright)
+        if blur:
+            v = v.filter(ImageFilter.GaussianBlur(blur))
+        out.append(v)
+    return out
+
+
 def detect_models(text: str) -> list[str]:
     return [name for pat, name in MODEL_PATTERNS if pat.search(text or '')]
 
@@ -111,7 +128,7 @@ class Retriever:
     def _load_or_build(self):
         from qdrant_client import models as qm
         state_file = self.index_dir / 'state.json'
-        version = f"{ingestion.corpus_hash()}|{config.TEXT_EMBED_MODEL}|{config.CLIP_MODEL}"
+        version = f"{ingestion.corpus_hash()}|{config.TEXT_EMBED_MODEL}|{config.CLIP_MODEL}|vues{len(PHOTO_VIEWS)}"
         state = json.loads(state_file.read_text(encoding='utf-8')) if state_file.exists() else {}
         collections = {c.name for c in self.qdrant.get_collections().collections}
         if state.get('version') != version or not {'units', 'figures'} <= collections:
@@ -128,8 +145,14 @@ class Retriever:
                     qm.PointStruct(id=i, vector=v.tolist(), payload={
                         **u, 'groupes_acces': by_key[f"{u['document_id']}/{u['element_id']}"]['groupes_acces']})
                     for i, (u, v) in enumerate(zip(units, vecs))])
-                figs = [e for e in elements if e['type'] == 'figure']
-                fvecs = self.embed_images([Image.open(e['image_path']).convert('RGB') for e in figs])
+                # Chaque figure est indexée avec des variantes « façon photo » (rotation, pénombre, flou) pour
+                # rapprocher les photos de terrain des schémas propres du corpus.
+                figs, views = [], []
+                for e in elements:
+                    if e['type'] == 'figure':
+                        for view in photo_views(Image.open(e['image_path']).convert('RGB')):
+                            figs.append(e); views.append(view)
+                fvecs = self.embed_images(views)
                 self.qdrant.create_collection('figures', vectors_config=qm.VectorParams(size=fvecs.shape[1],
                                                                                            distance=qm.Distance.COSINE))
                 self.qdrant.upsert('figures', points=[
@@ -181,8 +204,11 @@ class Retriever:
     def visual(self, image: Image.Image, groups, doc_ids, limit=5) -> list[tuple[str, float]]:
         v = self.embed_images([image])[0]
         res = self.qdrant.query_points('figures', query=v.tolist(), query_filter=self._doc_filter(groups, doc_ids),
-                                       limit=limit).points
-        return [(p.payload['key'], float(p.score)) for p in res]
+                                       limit=limit * len(PHOTO_VIEWS)).points
+        best: dict[str, float] = {}
+        for p in res:  # plusieurs vues par figure : on garde la meilleure
+            best[p.payload['key']] = max(best.get(p.payload['key'], -1.0), float(p.score))
+        return sorted(best.items(), key=lambda x: -x[1])[:limit]
 
     def identify_model(self, image: Image.Image, groups) -> tuple[str | None, float, float]:
         """Modèle d'équipement le plus probable d'après la figure la plus proche (similarité CLIP)."""

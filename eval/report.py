@@ -128,7 +128,13 @@ def build_report():
               f"| Reranker d'origine | {ft['mrr10_base']['val'][0]} | {ft['mrr10_base']['test'][0]} |",
               f"| Reranker adapté | {ft['mrr10_adapte']['val'][0]} | {ft['mrr10_adapte']['test'][0]} |", '',
               'Les questions générées sont proches du format d\'entraînement : le gain réel se lit plutôt sur les '
-              'scénarios rédigés à la main (section 2, lignes « reranker origine » et « reranker adapté »).', '']
+              'scénarios rédigés à la main (section 2, lignes « reranker origine » et « reranker adapté »).', '',
+              "**Conclusion** : l'adaptation améliore nettement le classement sur des questions du même format que "
+              "l'entraînement, y compris sur des documents jamais vus, mais ce gain **ne se transfère pas** aux questions "
+              "rédigées à la main (MRR@10 équivalent, et inférieur sur les documents de test, n=18). Les questions "
+              "d'entraînement, générées par gabarits, sont trop uniformes. Le reranker d'origine reste donc utilisé "
+              "par défaut (`MAINTIDOC_RERANKER=base`). Piste : des questions d'entraînement plus variées (paraphrases "
+              'rédigées ou générées par un LLM, puis vérifiées).', '']
     L += ['## 4. Évaluation de bout en bout (vrai modèle)', '',
           f"**{summary['n_scenarios_executes']} / {summary['n_scenarios_total']} scénarios exécutés, réussite globale "
           f"{summary['reussite_globale']}.**", '', '| Catégorie | Exécutés | Réussis | Taux |', '|---|---|---|---|']
@@ -152,8 +158,11 @@ def build_report():
           '### Échecs et analyse', '', '| Scénario | Catégorie | Contrôles en échec | Statut obtenu |', '|---|---|---|---|']
     for r in sorted(runs, key=lambda x: x['id']):
         if not r['passed']:
-            fails = ', '.join(n for n, ok in r['checks'] if not ok)
+            fails = ', '.join(n for n, ok in r['checks'] if not ok).replace('|', ' ou ')
             L.append(f"| {r['id']} | {r['category']} | {fails} | {(r.get('result') or {}).get('status', '-')} |")
+    analysis = ROOT / 'eval' / 'analyse_echecs.md'
+    if analysis.exists():
+        L += ['', analysis.read_text(encoding='utf-8').strip()]
     L += ['', '## 5. Limites', '',
           "- L'absence d'échec sur un contrôle ne constitue pas une garantie générale de sécurité.",
           '- Le petit modèle 3B, utilisé faute de GPU, lit imparfaitement les photos ; un modèle 7B sur GPU de 24 Go reste la cible.',

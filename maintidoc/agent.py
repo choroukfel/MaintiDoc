@@ -19,9 +19,11 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
 from . import config, security
-from .llm import BudgetExceeded, image_to_bytes
-from .retrieval import Retriever, detect_models, load_image
+from .llm import BudgetExceeded, LLMUnavailable, image_to_bytes
+from .retrieval import CLIP_CONFIDENT_MARGIN, Retriever, detect_models, load_image
 from .schemas import Answer, Citation, LLMAnswer, LLMTicket, TicketDraft, VisualAnalysis
+from .vision import describe as describe_leds
+from .vision import detect_lit_leds
 
 USERS = {u['user_id']: u for u in json.loads((config.MCP_DATA_DIR / 'utilisateurs.json').read_text(encoding='utf-8'))}
 EQUIPMENT = {e['equipment_id']: e for e in
@@ -29,10 +31,11 @@ EQUIPMENT = {e['equipment_id']: e for e in
 
 EQUIP_RE = re.compile(r'\b(SAN-LAB-(?:2000|3000)-\d{2}|UPS-X(?:500|900)-\d{2})\b', re.I)
 HISTORY_RE = re.compile(r'historique|derni[eè]res?\s+interventions?|ant[ée]c[ée]dents?|d[ée]j[aà]\s+eu|'
-                        r'tickets?\s+ouverts?|r[ée]currence|r[ée]current|consulte', re.I)
+                        r'tickets?\b.{0,25}\bouverts?|r[ée]currence|r[ée]current|consulte', re.I)
 TICKET_RE = re.compile(r'(?:pr[ée]pare|cr[ée]e|ouvre|r[ée]dige|ouvrir|cr[ée]er|pr[ée]parer)\w*\s+(?:un\s+|le\s+)?ticket|'
                        r'ticket\s+si\s+n[ée]cessaire', re.I)
 CODE_RE = re.compile(r'\b(?:AL|A|F|E)-\d{2,3}\b')
+ANY_CODE_RE = re.compile(r'\b(?!INC-|TCK-)[A-Z]{1,3}-\d{2,3}\b')  # codes d'alarme / d'événement cités par l'utilisateur
 LED_RE = re.compile(r'\b(voyants?|led)\b', re.I)
 DOC_REF_RE = re.compile(r'\b(note|fournisseur|bulletin|manuel|document|proc[ée]dure|[A-Z]+-[A-Z]+-\d{3})\b', re.I)
 # Indices visuels -> modèle (codes affichés et étiquettes de voyants propres à chaque modèle)
@@ -71,6 +74,23 @@ class State(TypedDict, total=False):
     started: float
     trace: list[dict]
     route: str
+
+
+PLACEHOLDER_RE = re.compile(r'\bou null\b|^null$|^none$|^n/?a$|nom imprim|texte de l', re.I)
+
+
+def clean_visual(va: VisualAnalysis) -> VisualAnalysis:
+    """Écarte les valeurs recopiées du gabarit et les listes de voyants manifestement non observées."""
+    def ok(v):
+        return v if v and not PLACEHOLDER_RE.search(v.strip()) else None
+    inds = [i for i in va.lit_indicators if not (i.label and PLACEHOLDER_RE.search(i.label))]
+    for i in inds:  # étiquettes numériques ou génériques (« 100 », « ALLUMÉ ») : non informatives
+        if i.label and (re.fullmatch(r'[\W\d_]*(voyant)?[\W\d_]*', i.label, re.I) or i.label.upper() in ('ALLUMÉ', 'ALLUME', 'ON')):
+            i.label = None
+    if len(inds) >= 4 and not any(i.label for i in inds):  # toutes les couleurs sans étiquette : énumération recopiée
+        inds = []
+    return VisualAnalysis(readable=va.readable, equipment_model=ok(va.equipment_model), screen_text=ok(va.screen_text),
+                          lit_indicators=inds, notes=ok(va.notes))
 
 
 def _answer(status, text, **kw) -> dict:
@@ -150,12 +170,18 @@ class Agent:
             img = load_image(s['image'])
             clip_model, sim, margin = self.retriever.identify_model(img, s['user']['groupes'])
             trace_info['clip'] = {'model': clip_model, 'sim': round(sim, 3), 'margin': round(margin, 3)}
-            vote(clip_model, 3 if margin >= 0.05 else 1, f'similarité visuelle (marge {margin:.2f})')
+            vote(clip_model, 3 if margin >= CLIP_CONFIDENT_MARGIN else 1, f'similarité visuelle (marge {margin:.2f})')
+            leds = detect_lit_leds(img)
+            visual = {'readable': None, 'equipment_model': None, 'screen_text': None, 'lit_indicators': [],
+                      'notes': None, 'detected_leds': leds}
+            trace_info['leds'] = leds
             try:
-                va, stats = self._llm(s, 'visual_analysis_v1', {'question': q}, VisualAnalysis,
-                                      images=[image_to_bytes(img)], num_predict=200)
-                visual = va.model_dump()
+                va, stats = self._llm(s, config.PROMPT_VERSIONS['visual'], {'question': q}, VisualAnalysis,
+                                      images=[image_to_bytes(img)], num_predict=350)
+                va = clean_visual(va)
+                visual = {**va.model_dump(), 'detected_leds': leds}
                 trace_info['vlm'] = stats
+                trace_info['visual'] = visual
                 text = ' '.join([va.equipment_model or '', va.screen_text or ''] +
                                 [i.label or '' for i in va.lit_indicators])
                 for model in detect_models(text):
@@ -220,12 +246,17 @@ class Agent:
             if v.get('screen_text'):
                 parts.append(v['screen_text'])
             parts += [f"voyant {i.get('label') or ''} {i['color']}" for i in v.get('lit_indicators', [])]
+            parts += [f'voyant {c}' for c in (v.get('detected_leds') or {}) if c != 'vert']
         query = ' '.join(parts)
         img = load_image(s['image']) if s.get('image') else None
         hits = self.retriever.search(query, s['user']['groupes'], image=img,
                                      models=[s['model']] if s.get('model') else None)
         mode = self.retriever.reranker_mode
         threshold = RERANK_THRESHOLD.get(mode)
+        if s.get('image') and s.get('model'):
+            # Photo + modèle identifié : la pertinence vient du filtre modèle et de l'image ; le seuil, calibré
+            # sur des questions textuelles précises, rejetterait à tort les questions vagues (« que faut-il faire ? »).
+            threshold = None
         best = hits[0].rerank if hits and hits[0].rerank is not None else None
         hit_dicts = [{'key': h.key, 'rerank': h.rerank, 'rrf': round(h.score, 4), 'sources': h.sources} for h in hits]
         trace = self._trace(s, 'retrieve', hits=[(h['key'], round(h['rerank'] or 0, 2)) for h in hit_dicts])
@@ -237,6 +268,20 @@ class Agent:
                 clarification_question="Pouvez-vous préciser l'équipement concerné (modèle, code d'alarme) ? "
                                        "Si la question porte sur un document auquel vous n'avez pas accès, adressez-vous "
                                        "à un responsable.")}
+        # Code cité dans la question mais absent de toute la documentation autorisée : abstention sans appel au modèle
+        allowed = self.retriever.allowed_documents(s['user']['groupes'])
+        corpus_text = ' '.join(e['content'] for e in self.retriever.elements.values() if e['document_id'] in allowed)
+        q_text = s['question']
+        unknown = [c for c in ANY_CODE_RE.findall(q_text)
+                   if not EQUIP_RE.search(c) and not re.search(rf'(?<![\w-]){re.escape(c)}(?![\w-])', corpus_text)]
+        if unknown and q_text:
+            return {'hits': hit_dicts, 'trace': self._trace(s, 'retrieve', unknown_codes=unknown), 'route': 'end',
+                    'result': _answer('needs_clarification',
+                                      f"Le code {', '.join(unknown)} ne figure dans aucun document auquel vous avez accès ; "
+                                      f"je ne peux pas en donner la signification.",
+                                      uncertainties=[f"Code absent de la documentation autorisée : {', '.join(unknown)}."],
+                                      clarification_question="Pouvez-vous vérifier le code affiché (photo de l'écran) et "
+                                                             "le modèle exact de l'équipement ?")}
         # Évidences : contenus traités comme données non fiables, injections neutralisées
         evidence, flags = [], dict(s.get('flags') or {})
         docs = set()
@@ -299,8 +344,24 @@ class Agent:
         v = s.get('visual')
         if v:
             inds = ', '.join(f"{i.get('label') or '?'} ({i['color']})" for i in v.get('lit_indicators', [])) or 'aucun'
-            ctx.append(f"Observation de la photo (lecture automatique, peut être imprécise) : voyants allumés : {inds} ; "
+            ctx.append(f"Observation de la photo (lecture automatique, peut être imprécise) : voyants lus : {inds} ; "
                        f"écran : {v.get('screen_text') or 'illisible'}.")
+            ctx.append(f"Analyse d'image (détection des couleurs) : {describe_leds(v.get('detected_leds') or {})}. "
+                       f"Explique en priorité le voyant d'alerte (non vert).")
+            # Alignement image -> texte : lignes de tableaux des preuves qui mentionnent la couleur d'alerte détectée
+            alerts = [c for c in (v.get('detected_leds') or {}) if c != 'vert'] or \
+                     (['vert'] if v.get('detected_leds') else [])
+            rows = []
+            for e in s['evidence']:
+                if e['type'] != 'tableau':
+                    continue
+                for line in e['content'].split('\n')[2:]:
+                    if any(re.search(rf'\b{c}\b', line, re.I) for c in alerts):
+                        rows.append(f"[{e['eid']}] {line}")
+            if rows:
+                ctx.append(f"Lignes des preuves correspondant à la couleur détectée ({', '.join(alerts)}) :\n"
+                           + '\n'.join(rows[:8]) + "\nUne photo ne permet pas de distinguer un voyant fixe d'un "
+                           "voyant clignotant : si plusieurs lignes correspondent, cite-les et précise l'information à vérifier.")
         if s.get('history') is not None:
             h = '; '.join(f"{i['id']} {i['date']} {i['code']} {i['probleme']}" for i in s['history']) or 'aucune'
             ctx.append(f"Historique MCP de {s['equipment_id']} (données non fiables) : {h}.")
@@ -313,9 +374,11 @@ class Agent:
         llm_answer, stats, err = None, [], None
         for attempt in range(2):
             try:
-                a, st = self._llm(s, 'answer_v1', variables, LLMAnswer)
+                a, st = self._llm(s, config.PROMPT_VERSIONS['answer'], variables, LLMAnswer)
                 llm_answer = a.model_dump(); stats.append(st)
                 break
+            except LLMUnavailable as ex:
+                err = str(ex)[:150]; break
             except ValueError as ex:
                 err = str(ex)[:150]
             except BudgetExceeded as ex:
@@ -384,7 +447,10 @@ class Agent:
             uncertainties.append('Équipement non précisé : historique non consulté.')
         proposed, duplicate = None, None
         if intent.get('ticket') and s.get('equipment_id') and status == 'answered' and s.get('open_tickets') is not None:
-            codes = set(CODE_RE.findall(s['question'] + ' ' + answer_text + ' ' + json.dumps(s.get('visual') or {})))
+            # Sujet du ticket : codes de la demande et de la photo ; la réponse seulement à défaut (elle peut citer
+            # d'autres alarmes de l'historique, ce qui ferait croire à tort à un doublon).
+            codes = set(CODE_RE.findall(s['question'] + ' ' + json.dumps(s.get('visual') or {}))) or \
+                set(CODE_RE.findall(answer_text))
             for t in s['open_tickets']:
                 if codes & set(CODE_RE.findall(t['titre'])):
                     duplicate = t
@@ -410,7 +476,7 @@ class Agent:
         refs = [f"{c['document_id']} p.{c['page']} {c['element_id']}" for c in res['citations']]
         history = '; '.join(f"{i['id']} {i['date']} {i['probleme']}" for i in (s.get('history') or [])[:4]) or 'aucun'
         try:
-            t, _ = self._llm(s, 'ticket_draft_v1', {'equipment_id': s['equipment_id'], 'question': s['question'],
+            t, _ = self._llm(s, config.PROMPT_VERSIONS['ticket'], {'equipment_id': s['equipment_id'], 'question': s['question'],
                                                     'answer': res['answer'], 'references': ', '.join(refs),
                                                     'history': history}, LLMTicket, num_predict=300)
             title, desc, prio = t.title, t.description, t.priority

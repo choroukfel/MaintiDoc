@@ -76,6 +76,31 @@ def test_photo_screen_code_identifies_model(agent_factory):
     assert out['model'] == 'UPS-X900' and out['result']['status'] == 'answered'
 
 
+def test_unknown_code_abstains_without_llm(agent_factory):
+    llm = FakeLLM()
+    out = agent_factory(llm).ask('u-tech-a', 'Que signifie le code Z-99 sur le SAN-LAB 2000 ?')
+    assert out['result']['status'] == 'needs_clarification' and 'Z-99' in out['result']['answer']
+    assert llm.calls == []
+
+
+def test_code_of_unauthorized_family_not_answered(agent_factory):
+    out = agent_factory().ask('u-tech-a', "Que signifie le code F-05 sur l'UPS-X900 ?")
+    assert out['result']['status'] != 'answered'
+    assert not any(e['document_id'].startswith('UPS') for e in out['evidence'])
+
+
+def test_llm_unavailable_degrades_gracefully(agent_factory):
+    from maintidoc.llm import LLMUnavailable
+
+    class DownLLM(FakeLLM):
+        def structured(self, *a, **k):
+            self.calls.append('x')
+            raise LLMUnavailable('Modèle indisponible : ReadTimeout')
+    llm = DownLLM()
+    out = agent_factory(llm).ask('u-tech-b', "Que signifie F-05 sur l'UPS-X900 ?")
+    assert out['result']['status'] == 'needs_clarification' and len(llm.calls) == 1  # pas de nouvel essai
+
+
 def test_budget_enforced(agent_factory, monkeypatch):
     monkeypatch.setattr(config, 'MAX_LLM_CALLS', 0)
     out = agent_factory().ask('u-tech-b', 'Que signifie F-05 sur l\'UPS-X900 ?')
@@ -87,6 +112,15 @@ def test_existing_ticket_not_duplicated(agent_factory):
                                         'answer': 'Le disque B03 est en pré-alerte (AL-02).'})).ask(
         'u-tech-a', 'Le disque B03 du SAN-LAB-2000-01 est en AL-02, prépare un ticket si nécessaire.')
     assert out['ticket_draft'] is None and 'TCK-2026-0141' in out['result']['answer']
+
+
+def test_duplicate_check_uses_requested_code(agent_factory):
+    """La réponse cite le ticket AL-02 existant, mais la demande porte sur AL-01 : un brouillon doit être proposé."""
+    llm = FakeLLM(answer={'status': 'answered', 'citations': ['E1'],
+                          'answer': "AL-01 : chemin FC dégradé. Un ticket existe pour le disque B03 (AL-02)."})
+    out = agent_factory(llm).ask('u-tech-a', "Consulte l'historique de SAN-LAB-2000-01 et prépare un ticket pour "
+                                             "l'alarme AL-01.")
+    assert out['awaiting_approval'] and out['ticket_draft']
 
 
 def _ticket_flow(agent_factory):
