@@ -1,0 +1,8 @@
+[
+  {"equipment_id": "SAN-LAB-2000-01", "modele": "SAN-LAB 2000", "famille": "SAN", "site": "Salle S2", "emplacement": "Baie R04", "numero_serie": "SL2K-24-00117", "micrologiciel": "4.2.1", "groupe_acces": "tech_san", "mise_en_service": "2024-02-12"},
+  {"equipment_id": "SAN-LAB-2000-02", "modele": "SAN-LAB 2000", "famille": "SAN", "site": "Salle S2", "emplacement": "Baie R05", "numero_serie": "SL2K-24-00152", "micrologiciel": "4.2.1", "groupe_acces": "tech_san", "mise_en_service": "2024-05-06"},
+  {"equipment_id": "SAN-LAB-3000-01", "modele": "SAN-LAB 3000", "famille": "SAN", "site": "Salle S3", "emplacement": "Baie R01", "numero_serie": "SL3K-26-00009", "micrologiciel": "1.3.0", "groupe_acces": "tech_san", "mise_en_service": "2026-03-20"},
+  {"equipment_id": "UPS-X500-01", "modele": "UPS-X500", "famille": "UPS", "site": "Salle S2", "emplacement": "Baie R04 (bas)", "numero_serie": "UX5-22-04431", "lot_batterie": "L2303", "groupe_acces": "tech_ups", "mise_en_service": "2022-11-08"},
+  {"equipment_id": "UPS-X500-02", "modele": "UPS-X500", "famille": "UPS", "site": "Salle S3", "emplacement": "Baie R01 (bas)", "numero_serie": "UX5-24-05102", "lot_batterie": "L2405", "groupe_acces": "tech_ups", "mise_en_service": "2024-04-02"},
+  {"equipment_id": "UPS-X900-01", "modele": "UPS-X900", "famille": "UPS", "site": "Salle S2", "emplacement": "Baie R03", "numero_serie": "UX9-25-00288", "lot_batterie": "M2501", "groupe_acces": "tech_ups", "mise_en_service": "2025-06-17"}
+]

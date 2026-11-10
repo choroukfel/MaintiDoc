@@ -1,0 +1,6 @@
+[
+  {"user_id": "u-tech-a", "nom": "Tech-A", "role": "technicien", "groupes": ["tech_san"], "peut_preparer_ticket": true, "peut_approuver_ticket": false},
+  {"user_id": "u-tech-b", "nom": "Tech-B", "role": "technicien", "groupes": ["tech_ups"], "peut_preparer_ticket": true, "peut_approuver_ticket": false},
+  {"user_id": "u-resp-1", "nom": "Resp-1", "role": "responsable", "groupes": ["tech_san", "tech_ups", "responsables"], "peut_preparer_ticket": true, "peut_approuver_ticket": true},
+  {"user_id": "u-stagiaire", "nom": "Stagiaire-1", "role": "lecteur", "groupes": ["tech_ups"], "peut_preparer_ticket": false, "peut_approuver_ticket": false}
+]
