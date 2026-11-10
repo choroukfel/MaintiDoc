@@ -1,0 +1,67 @@
+"""Accès au modèle vision-langage (Ollama) avec sorties JSON contraintes et budget d'appels."""
+from __future__ import annotations
+
+import io
+import json
+import time
+from functools import lru_cache
+from typing import Any
+
+import yaml
+from langchain_core.prompts import PromptTemplate
+from PIL import Image
+from pydantic import BaseModel, ValidationError
+
+from . import config
+
+
+class BudgetExceeded(RuntimeError):
+    pass
+
+
+@lru_cache
+def load_prompt(name: str) -> dict:
+    data = yaml.safe_load((config.PROMPTS_DIR / f'{name}.yaml').read_text(encoding='utf-8'))
+    data['user_template'] = PromptTemplate.from_template(data['user'])
+    return data
+
+
+def image_to_bytes(im: Image.Image, max_side: int = config.MAX_IMAGE_SIDE) -> bytes:
+    im = im.copy()
+    im.thumbnail((max_side, max_side))
+    buf = io.BytesIO()
+    im.save(buf, format='JPEG', quality=85)
+    return buf.getvalue()
+
+
+class OllamaVLM:
+    """Client Ollama. `structured()` renvoie un objet Pydantic validé ou lève ValueError."""
+
+    def __init__(self, model: str = config.VLM_MODEL, host: str = config.OLLAMA_HOST):
+        from ollama import Client
+        self.model = model
+        self.client = Client(host=host, timeout=config.LLM_TIMEOUT)
+
+    def structured(self, prompt_name: str, variables: dict[str, Any], schema: type[BaseModel],
+                   images: list[bytes] | None = None, num_predict: int = config.NUM_PREDICT) -> tuple[BaseModel, dict]:
+        p = load_prompt(prompt_name)
+        user = p['user_template'].format(**variables)
+        msg: dict[str, Any] = {'role': 'user', 'content': user}
+        if images:
+            msg['images'] = images
+        t = time.time()
+        res = self.client.chat(model=self.model, messages=[{'role': 'system', 'content': p['system']}, msg],
+                               format=schema.model_json_schema(), keep_alive='15m',
+                               options={'temperature': 0, 'num_ctx': config.NUM_CTX, 'num_predict': num_predict})
+        stats = {'prompt': prompt_name, 'seconds': round(time.time() - t, 2),
+                 'prompt_tokens': res.prompt_eval_count, 'output_tokens': res.eval_count}
+        try:
+            return schema.model_validate(json.loads(res.message.content)), stats
+        except (json.JSONDecodeError, ValidationError) as ex:
+            raise ValueError(f'Sortie JSON invalide : {ex}') from ex
+
+    def available(self) -> bool:
+        try:
+            return any(m.model == self.model for m in self.client.list().models)
+        except Exception:
+            return False

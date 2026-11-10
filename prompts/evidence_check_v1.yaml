@@ -1,0 +1,9 @@
+version: evidence_check_v1
+description: Juge LLM utilisé par l'évaluation pour vérifier qu'une citation soutient l'affirmation.
+system: |
+  Tu vérifies si un extrait documentaire SOUTIENT une affirmation. Réponds en JSON :
+  {"supported": true|false, "reason": "phrase courte"}
+  supported=true seulement si l'extrait contient explicitement l'information affirmée.
+user: |
+  AFFIRMATION : {claim}
+  EXTRAIT : {evidence}

@@ -65,7 +65,7 @@ Données associées :
 |---|---|
 | Interface et API | Streamlit, FastAPI (authentification et autorisation) |
 | Orchestration | LangGraph (état, boucles bornées, interruption pour validation humaine) |
-| Recherche | Qdrant ; BGE-M3 (texte) ; encodeur de type CLIP (images) ; fusion RRF ; reranker multilingue fine-tuné |
+| Recherche | Qdrant ; MiniLM multilingue (texte ; BGE-M3 sur une machine plus puissante) ; BM25 ; CLIP (images) ; fusion RRF ; reranker multilingue fine-tuné |
 | Modèle vision-langage | Qwen2.5-VL à poids ouverts, servi par Ollama (3B en développement, 7B pour la démonstration) |
 | Outils | Serveur MCP de maintenance (SQLite) |
 | Stockage et suivi | PostgreSQL, MinIO, MLflow ; déploiement Docker Compose |

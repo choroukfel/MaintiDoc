@@ -1,0 +1,55 @@
+"""Configuration centrale de MaintiDoc (chemins, modèles, budgets, secrets)."""
+from __future__ import annotations
+
+import os
+import secrets
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+CORPUS_DIR = ROOT / 'corpus'
+DATA_DIR = ROOT / 'data'
+INDEX_DIR = DATA_DIR / 'index'
+LOG_DIR = DATA_DIR / 'logs'
+MODELS_DIR = DATA_DIR / 'models'
+MCP_DATA_DIR = ROOT / 'mcp_server' / 'data'
+MCP_DB = Path(os.getenv('MAINTIDOC_MCP_DB', DATA_DIR / 'mcp' / 'maintenance.db'))
+PROMPTS_DIR = ROOT / 'prompts'
+
+# ------------------------------------------------------------------ modèles
+OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://127.0.0.1:11434')
+VLM_MODEL = os.getenv('MAINTIDOC_VLM', 'qwen2.5vl:3b')
+# BGE-M3 (2,2 Go) est remplacé par un modèle multilingue plus léger compatible avec le poste de développement
+# (CPU, disque limité). Changer la variable d'environnement pour revenir à BAAI/bge-m3.
+TEXT_EMBED_MODEL = os.getenv('MAINTIDOC_TEXT_EMBED', 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+CLIP_MODEL = os.getenv('MAINTIDOC_CLIP', 'sentence-transformers/clip-ViT-B-32')
+RERANKER_BASE = os.getenv('MAINTIDOC_RERANKER_BASE', 'cross-encoder/mmarco-mMiniLMv2-L12-H384-v1')
+RERANKER_FINETUNED = MODELS_DIR / 'reranker-maintidoc'
+# 'finetuned' | 'base' | 'none'
+# 'base' par défaut : meilleur résultat mesuré sur les scénarios rédigés à la main (voir docs/rapport_evaluation.md)
+RERANKER_MODE = os.getenv('MAINTIDOC_RERANKER', 'base')
+QDRANT_URL = os.getenv('QDRANT_URL')  # None => Qdrant embarqué (fichiers locaux)
+
+# ------------------------------------------------------------------ budgets (appliqués par le code)
+MAX_MCP_CALLS = int(os.getenv('MAINTIDOC_MAX_MCP_CALLS', 3))
+MAX_LLM_CALLS = int(os.getenv('MAINTIDOC_MAX_LLM_CALLS', 6))
+# Le sujet vise 60 s sur un GPU 24 Go ; sur le poste CPU de développement, la limite est relevée.
+MAX_SECONDS = float(os.getenv('MAINTIDOC_MAX_SECONDS', 600))
+MAX_IMAGE_SIDE = int(os.getenv('MAINTIDOC_MAX_IMAGE_SIDE', 512))
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_QUESTION_CHARS = 2000
+NUM_CTX = int(os.getenv('MAINTIDOC_NUM_CTX', 4096))
+NUM_PREDICT = int(os.getenv('MAINTIDOC_NUM_PREDICT', 400))
+EVIDENCE_TOP_K = int(os.getenv('MAINTIDOC_TOP_K', 4))
+EVIDENCE_MAX_CHARS = int(os.getenv('MAINTIDOC_EVIDENCE_CHARS', 1100))
+LLM_TIMEOUT = float(os.getenv('MAINTIDOC_LLM_TIMEOUT', 420))
+
+# ------------------------------------------------------------------ secrets (injectés à l'exécution, jamais dans Git)
+# En développement, un secret aléatoire est généré par processus et transmis au serveur MCP enfant
+# via l'environnement. En production : variables d'environnement / gestionnaire de secrets.
+os.environ.setdefault('MAINTIDOC_APPROVAL_SECRET', secrets.token_hex(32))
+os.environ.setdefault('MAINTIDOC_JWT_SECRET', secrets.token_hex(32))
+APPROVAL_SECRET = os.environ['MAINTIDOC_APPROVAL_SECRET']
+JWT_SECRET = os.environ['MAINTIDOC_JWT_SECRET']
+
+PROMPT_VERSIONS = {'answer': 'answer_v1', 'visual': 'visual_analysis_v1', 'ticket': 'ticket_draft_v1',
+                   'evidence_check': 'evidence_check_v1'}

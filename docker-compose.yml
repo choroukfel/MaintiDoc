@@ -1,0 +1,43 @@
+# Déploiement de démonstration MaintiDoc.
+# Les secrets sont lus dans un fichier .env (non versionné) : voir .env.example.
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.15.0
+    volumes: [qdrant_data:/qdrant/storage]
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:0.12.0
+    volumes: [ollama_models:/root/.ollama]
+    restart: unless-stopped
+    # Décommenter sur une machine avec GPU NVIDIA (cible : 24 Go, qwen2.5vl:7b)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices: [{driver: nvidia, count: 1, capabilities: [gpu]}]
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      OLLAMA_HOST: http://ollama:11434
+      MAINTIDOC_VLM: ${MAINTIDOC_VLM:-qwen2.5vl:7b}
+      MAINTIDOC_MAX_SECONDS: ${MAINTIDOC_MAX_SECONDS:-60}
+    volumes: [app_data:/app/data]
+    ports: ["8000:8000"]
+    depends_on: [qdrant, ollama]
+    restart: unless-stopped
+
+  ui:
+    build: .
+    command: ["streamlit", "run", "ui/app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
+    environment:
+      MAINTIDOC_API: http://api:8000
+    ports: ["8501:8501"]
+    depends_on: [api]
+
+volumes:
+  qdrant_data:
+  ollama_models:
+  app_data:
