@@ -48,6 +48,8 @@ Toute question sur un autre équipement conduit à une abstention (« aucune sou
 - **Détection d'injection par motifs** : efficace sur les formulations testées, contournable par des formulations
   nouvelles. La protection principale est architecturale : les outils sont déclenchés par le code du workflow, et
   la création de ticket exige un jeton d'approbation signé côté serveur.
+- **Quotas** : appliqués en mémoire par l'unique processus d'API de la démonstration ; avec plusieurs instances,
+  un stockage partagé des compteurs (Redis, PostgreSQL) serait nécessaire.
 - **Authentification de démonstration** : connexion par identifiant fictif sans mot de passe ; à remplacer par un
   fournisseur d'identité en production.
 - **Performance** : sur CPU, une réponse prend de 1 à 5 minutes, loin de l'objectif de 30 s (p95) visé sur GPU 24 Go.

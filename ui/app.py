@@ -58,7 +58,9 @@ if st.button('Envoyer', type='primary'):
         payload['image_base64'] = base64.b64encode(photo.getvalue()).decode()
     with st.spinner('Analyse en cours (inférence locale, plusieurs minutes sur CPU)…'):
         r = api('POST', '/ask', st.session_state['token'], json=payload)
-    if r.status_code != 200:
+    if r.status_code == 429:
+        st.warning(f"{r.json().get('detail')} Réessayez dans {r.headers.get('Retry-After', '?')} s.")
+    elif r.status_code != 200:
         st.error(f'Erreur {r.status_code} : {r.text}')
     else:
         st.session_state['last'] = r.json()

@@ -7,6 +7,7 @@ from __future__ import annotations
 import base64
 import sys
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import jwt
@@ -16,12 +17,25 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from maintidoc import config  # noqa: E402
+from maintidoc import config, security  # noqa: E402
 from maintidoc.agent import USERS, Agent  # noqa: E402
+from maintidoc.quotas import QuotaExceeded, QuotaManager  # noqa: E402
 
-app = FastAPI(title='MaintiDoc API', version='1.0')
+@asynccontextmanager
+async def lifespan(_app):
+    security.purge_logs()  # durée de conservation des journaux (MAINTIDOC_LOG_RETENTION_DAYS)
+    yield
+
+
+app = FastAPI(title='MaintiDoc API', version='1.0', lifespan=lifespan)
 bearer = HTTPBearer(auto_error=False)
 _agent: Agent | None = None
+quotas = QuotaManager()
+
+
+def set_quotas(manager: QuotaManager) -> None:  # utilisé par les tests
+    global quotas
+    quotas = manager
 
 
 def get_agent() -> Agent:
@@ -94,9 +108,17 @@ def ask(req: AskRequest, user: dict = Depends(current_user)):
         if len(image) > config.MAX_IMAGE_BYTES:
             raise HTTPException(413, 'Image trop volumineuse')
     try:
-        return get_agent().ask(user['user_id'], req.question, image)
+        with quotas.slot(user['user_id']):
+            return get_agent().ask(user['user_id'], req.question, image)
+    except QuotaExceeded as ex:
+        raise HTTPException(429, str(ex), headers={'Retry-After': str(ex.retry_after)})
     except ValueError as ex:
         raise HTTPException(400, str(ex))
+
+
+@app.get('/quota')
+def my_quota(user: dict = Depends(current_user)):
+    return quotas.usage(user['user_id'])
 
 
 @app.post('/tickets/{thread_id}/decision')

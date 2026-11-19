@@ -43,6 +43,15 @@ EVIDENCE_TOP_K = int(os.getenv('MAINTIDOC_TOP_K', 4))
 EVIDENCE_MAX_CHARS = int(os.getenv('MAINTIDOC_EVIDENCE_CHARS', 1100))
 LLM_TIMEOUT = float(os.getenv('MAINTIDOC_LLM_TIMEOUT', 420))
 
+# ------------------------------------------------------------------ quotas par utilisateur (API)
+QUOTA_REQUESTS_PER_HOUR = int(os.getenv('MAINTIDOC_QUOTA_REQUESTS_PER_HOUR', 30))
+# plafond de temps de calcul (inférence CPU/GPU) par utilisateur et par période glissante de 24 h
+QUOTA_COMPUTE_SECONDS_PER_DAY = float(os.getenv('MAINTIDOC_QUOTA_COMPUTE_SECONDS_PER_DAY', 3600))
+QUOTA_MAX_CONCURRENT = int(os.getenv('MAINTIDOC_QUOTA_MAX_CONCURRENT', 1))
+
+# ------------------------------------------------------------------ journalisation
+LOG_RETENTION_DAYS = int(os.getenv('MAINTIDOC_LOG_RETENTION_DAYS', 30))
+
 # ------------------------------------------------------------------ secrets (injectés à l'exécution, jamais dans Git)
 # En développement, un secret aléatoire est généré par processus et transmis au serveur MCP enfant
 # via l'environnement. En production : variables d'environnement / gestionnaire de secrets.

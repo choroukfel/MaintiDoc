@@ -109,9 +109,42 @@ def verify_approval(token: str, approver_id: str, equipment_id: str, chash: str,
 
 
 # ------------------------------------------------------------------ journalisation (métadonnées uniquement)
+_last_purge: str | None = None
+
+
+def purge_logs(retention_days: int | None = None, now: float | None = None) -> int:
+    """Supprime les entrées de journal plus anciennes que la durée de conservation. Retourne le nombre supprimé."""
+    path = config.LOG_DIR / 'requests.jsonl'
+    if not path.exists():
+        return 0
+    days = config.LOG_RETENTION_DAYS if retention_days is None else retention_days
+    cutoff = time.strftime('%Y-%m-%dT%H:%M:%S', time.localtime((now or time.time()) - days * 86400))
+    kept, removed = [], 0
+    for line in path.read_text(encoding='utf-8').splitlines():
+        try:
+            ts = json.loads(line).get('ts', '')
+        except json.JSONDecodeError:
+            removed += 1  # ligne illisible : supprimée
+            continue
+        if ts >= cutoff:  # format ISO : l'ordre alphabétique est l'ordre chronologique
+            kept.append(line)
+        else:
+            removed += 1
+    if removed:
+        tmp = path.with_suffix('.tmp')
+        tmp.write_text(''.join(l + '\n' for l in kept), encoding='utf-8')
+        tmp.replace(path)  # remplacement atomique
+    return removed
+
+
 def log_event(event: dict) -> None:
+    global _last_purge
     config.LOG_DIR.mkdir(parents=True, exist_ok=True)
     safe = {k: v for k, v in event.items() if k not in {'question', 'answer', 'image', 'description', 'evidence'}}
     safe['ts'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+    today = safe['ts'][:10]
+    if _last_purge != today:  # purge au plus une fois par jour
+        purge_logs()
+        _last_purge = today
     with open(config.LOG_DIR / 'requests.jsonl', 'a', encoding='utf-8') as f:
         f.write(json.dumps(safe, ensure_ascii=False) + '\n')

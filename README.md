@@ -106,7 +106,7 @@ seul habilité à approuver un ticket et à lire SAN-CAB-012), `u-stagiaire` (le
 ## Tests et évaluation
 
 ```powershell
-pytest                                   # 57 tests automatisés (LLM simulé, MCP réel en stdio, OCR réel)
+pytest                                   # 65 tests automatisés (LLM simulé, MCP réel en stdio, OCR réel)
 python eval/finetune_reranker.py         # fine-tuning du reranker (CPU, environ 30 min)
 python eval/run_eval.py retrieval        # Recall@5, nDCG@5, MRR@10 (5 configurations)
 python eval/run_eval.py e2e              # 160 scénarios avec le vrai modèle (plusieurs heures sur CPU)
@@ -148,4 +148,8 @@ Mesurés sur un PC portable sans GPU (i5, 15 Go de RAM), avec Qwen2.5-VL 3B, cor
   et une demande d'utilisateur contenant une injection est refusée.
 - **Budgets** (appliqués par le code) : 3 appels MCP, 6 appels au modèle, temps maximal configurable, taille des
   images et du contexte limitée.
-- **Journalisation** : métadonnées uniquement (`data/logs/requests.jsonl`), sans contenu brut.
+- **Quotas par utilisateur** (API) : 30 requêtes par heure, 3 600 s de calcul par 24 h glissantes, une requête à la
+  fois ; au-delà, réponse 429 avec le délai d'attente (`Retry-After`). Consommation visible sur `GET /quota`.
+  Réglables par `MAINTIDOC_QUOTA_REQUESTS_PER_HOUR`, `MAINTIDOC_QUOTA_COMPUTE_SECONDS_PER_DAY`, `MAINTIDOC_QUOTA_MAX_CONCURRENT`.
+- **Journalisation** : métadonnées uniquement (`data/logs/requests.jsonl`), sans contenu brut ; entrées purgées
+  au-delà de 30 jours (`MAINTIDOC_LOG_RETENTION_DAYS`), au démarrage de l'API puis une fois par jour.
