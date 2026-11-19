@@ -1,0 +1,58 @@
+[
+ {
+  "etiquette": "cpu",
+  "date": "2026-11-19T19:07:44",
+  "modele": "qwen2.5vl:3b",
+  "reponse_texte": {
+   "prompt_tokens": 1809,
+   "tokens_generes": 157,
+   "lecture_tokens_par_s": 70.6,
+   "generation_tokens_par_s": 9.9,
+   "duree_totale_s": 41.6,
+   "chargement_s": 0.0
+  },
+  "analyse_photo": {
+   "prompt_tokens": 1322,
+   "tokens_generes": 78,
+   "lecture_tokens_par_s": 18.6,
+   "generation_tokens_par_s": 10.0,
+   "duree_totale_s": 79.1,
+   "chargement_s": 0.0
+  },
+  "memoire": [
+   {
+    "modele": "qwen2.5vl:3b",
+    "memoire_totale_go": 2.77,
+    "memoire_gpu_go": 0.0
+   }
+  ]
+ },
+ {
+  "etiquette": "gpu-intel-iris-xe",
+  "date": "2026-11-19T19:09:49",
+  "modele": "qwen2.5vl:3b",
+  "reponse_texte": {
+   "prompt_tokens": 1809,
+   "tokens_generes": 195,
+   "lecture_tokens_par_s": 171.9,
+   "generation_tokens_par_s": 7.6,
+   "duree_totale_s": 36.1,
+   "chargement_s": 0.0
+  },
+  "analyse_photo": {
+   "prompt_tokens": 1322,
+   "tokens_generes": 56,
+   "lecture_tokens_par_s": 53.8,
+   "generation_tokens_par_s": 7.8,
+   "duree_totale_s": 32.2,
+   "chargement_s": 0.0
+  },
+  "memoire": [
+   {
+    "modele": "qwen2.5vl:3b",
+    "memoire_totale_go": 2.76,
+    "memoire_gpu_go": 2.76
+   }
+  ]
+ }
+]

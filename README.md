@@ -58,6 +58,20 @@ docs/           note de cadrage, fiche de limites, rapport d'évaluation
 app.py          prototype initial (conservé pour mémoire)
 ```
 
+## Utiliser un GPU
+
+- **GPU intégré Intel (Iris Xe, poste de développement)** : Ollama l'utilise via Vulkan si la variable
+  d'environnement utilisateur `OLLAMA_IGPU_ENABLE=1` est définie, puis Ollama redémarré. Mesuré : analyse de photo
+  2,5 fois plus rapide (79 s → 32 s), réponse texte 42 s → 36 s ; le modèle 3B tient entièrement en mémoire GPU (2,8 Go).
+  ```powershell
+  [Environment]::SetEnvironmentVariable('OLLAMA_IGPU_ENABLE', '1', 'User')   # puis quitter et relancer Ollama
+  python eval/bench_inference.py gpu                                          # mesurer
+  ```
+  Pour revenir au processeur : `[Environment]::SetEnvironmentVariable('OLLAMA_IGPU_ENABLE', $null, 'User')`.
+- **GPU NVIDIA (cible du sujet : 24 Go)** : Ollama l'utilise automatiquement ; passer à `MAINTIDOC_VLM=qwen2.5vl:7b`
+  dans `.env`. Avec Docker, décommenter le bloc `deploy` du service `ollama` et lancer avec `--profile ollama`.
+- Dans Docker Compose, l'API utilise par défaut l'Ollama de l'hôte (`OLLAMA_HOST`), donc profite du GPU de la machine.
+
 ## Installation (Windows, CPU)
 
 ```powershell

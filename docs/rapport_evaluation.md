@@ -93,6 +93,20 @@ Les questions générées sont proches du format d'entraînement : le gain réel
 | TEX-21 | texte | contient:3 fois ou 7 jours ou trois | answered |
 | TEX-36 | texte | status | needs_clarification |
 
+### Performances matérielles : processeur et GPU intégré
+
+Mesures d'Ollama (`python eval/bench_inference.py`) sur deux requêtes types : réponse documentaire (~1 800 tokens de prompt) et analyse de photo (~1 300 tokens).
+
+| Matériel | Lecture prompt (tokens/s) | Génération (tokens/s) | Réponse texte (s) | Lecture photo (tokens/s) | Analyse photo (s) | Mémoire GPU (Go) |
+|---|---|---|---|---|---|---|
+| cpu | 70.6 | 9.9 | 41.6 | 18.6 | 79.1 | 0.0 |
+| gpu-intel-iris-xe | 171.9 | 7.6 | 36.1 | 53.8 | 32.2 | 2.76 |
+
+Contrôle de qualité sur le GPU intégré (10 scénarios clés, code de l'itération 3) : 8 réussis, contre 8 sur processeur à l'itération 2 pour les mêmes scénarios. Réussis seulement sur GPU : TEX-10 ; réussis seulement sur processeur : IMA-23. Sur un échantillon aussi petit, la qualité est jugée comparable.
+
+Le GPU intégré Intel Iris Xe (Vulkan, activé par `OLLAMA_IGPU_ENABLE=1`) lit le prompt et l'image 2,4 à 2,9 fois plus vite, mais génère un peu moins vite : le gain est surtout net sur les photos. L'objectif de 30 s (p95) suppose toujours un GPU dédié.
+
+
 ### Itération 3 : sécurité des réponses (scénarios concernés)
 
 Deux corrections, puis réévaluation des scénarios qu'elles touchent (questions textuelles, corpus étendu, tickets) :

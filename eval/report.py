@@ -190,6 +190,34 @@ def build_report():
         if not r['passed']:
             fails = ', '.join(n for n, ok in r['checks'] if not ok).replace('|', ' ou ')
             L.append(f"| {r['id']} | {r['category']} | {fails} | {(r.get('result') or {}).get('status', '-')} |")
+    # ---------------------------------------------------------- performances matérielles (mémoire et temps GPU)
+    benchf = RES / 'bench_inference.json'
+    if benchf.exists():
+        bench = json.loads(benchf.read_text(encoding='utf-8'))
+        L += ['', '### Performances matérielles : processeur et GPU intégré', '',
+              "Mesures d'Ollama (`python eval/bench_inference.py`) sur deux requêtes types : réponse documentaire "
+              "(~1 800 tokens de prompt) et analyse de photo (~1 300 tokens).", '',
+              '| Matériel | Lecture prompt (tokens/s) | Génération (tokens/s) | Réponse texte (s) | Lecture photo (tokens/s) | '
+              'Analyse photo (s) | Mémoire GPU (Go) |', '|---|---|---|---|---|---|---|']
+        for b in bench:
+            t, ph = b['reponse_texte'], b['analyse_photo']
+            gpu = sum(m['memoire_gpu_go'] for m in b['memoire'])
+            L.append(f"| {b['etiquette']} | {t['lecture_tokens_par_s']} | {t['generation_tokens_par_s']} | "
+                     f"{t['duree_totale_s']} | {ph['lecture_tokens_par_s']} | {ph['duree_totale_s']} | {gpu} |")
+        igpu = RES / 'e2e_runs_igpu.jsonl'
+        if igpu.exists():
+            rows = [json.loads(l) for l in igpu.read_text(encoding='utf-8').splitlines()]
+            cpu = {r['id']: r for r in runs}
+            ok_gpu = {r['id'] for r in rows if r['passed']}
+            ok_cpu = {r['id'] for r in rows if r['id'] in cpu and cpu[r['id']]['passed']}
+            L += ['', f"Contrôle de qualité sur le GPU intégré ({len(rows)} scénarios clés, code de l'itération 3) : "
+                      f"{len(ok_gpu)} réussis, contre {len(ok_cpu)} sur processeur à l'itération 2 pour les mêmes scénarios. "
+                      f"Réussis seulement sur GPU : {', '.join(sorted(ok_gpu - ok_cpu)) or 'aucun'} ; réussis seulement sur "
+                      f"processeur : {', '.join(sorted(ok_cpu - ok_gpu)) or 'aucun'}. Sur un échantillon aussi petit, la "
+                      "qualité est jugée comparable."]
+        L += ['', "Le GPU intégré Intel Iris Xe (Vulkan, activé par `OLLAMA_IGPU_ENABLE=1`) lit le prompt et l'image 2,4 à "
+                  "2,9 fois plus vite, mais génère un peu moins vite : le gain est surtout net sur les photos. L'objectif "
+                  "de 30 s (p95) suppose toujours un GPU dédié.", '']
     # ---------------------------------------------------------- itération 3 : sécurité des réponses
     it3f, calf = RES / 'e2e_runs_iter3.jsonl', RES / 'faithfulness_calibration.json'
     if it3f.exists():

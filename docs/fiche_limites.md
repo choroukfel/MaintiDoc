@@ -56,7 +56,9 @@ Toute question sur un autre équipement conduit à une abstention (« aucune sou
   un stockage partagé des compteurs (Redis, PostgreSQL) serait nécessaire.
 - **Authentification de démonstration** : connexion par identifiant fictif sans mot de passe ; à remplacer par un
   fournisseur d'identité en production.
-- **Performance** : sur CPU, une réponse prend de 1 à 5 minutes, loin de l'objectif de 30 s (p95) visé sur GPU 24 Go.
+- **Performance** : sur le processeur, une réponse prend environ 40 s (texte) à 80 s (photo). Avec le GPU intégré
+  Intel activé (`OLLAMA_IGPU_ENABLE=1`), l'analyse d'une photo descend à environ 32 s. L'objectif de 30 s (p95) reste
+  visé sur un GPU dédié de 24 Go.
 
 ## Conditions d'utilisation
 1. Vérifier les références citées avant toute intervention.
