@@ -50,6 +50,8 @@ Toute question sur un autre équipement conduit à une abstention (« aucune sou
 - **Détection d'injection par motifs** : efficace sur les formulations testées, contournable par des formulations
   nouvelles. La protection principale est architecturale : les outils sont déclenchés par le code du workflow, et
   la création de ticket exige un jeton d'approbation signé côté serveur.
+- **Réseau** : dans Docker, les bases de données n'ont aucun accès sortant ; l'API garde un accès sortant (téléchargement
+  des modèles, Ollama de l'hôte), qu'un pare-feu ou un proxy devrait restreindre en production.
 - **Quotas** : appliqués en mémoire par l'unique processus d'API de la démonstration ; avec plusieurs instances,
   un stockage partagé des compteurs (Redis, PostgreSQL) serait nécessaire.
 - **Authentification de démonstration** : connexion par identifiant fictif sans mot de passe ; à remplacer par un

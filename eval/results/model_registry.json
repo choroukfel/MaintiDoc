@@ -1,0 +1,65 @@
+[
+ {
+  "nom": "reranker-maintidoc",
+  "version": "ft-20261119",
+  "date": "2026-11-19T18:48:36",
+  "modele_de_base": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+  "sha256_poids": "c260bdfe468852371b2686f56581cf3615a1d7a96ed2b500b89c4806ee98b1d2",
+  "sha256_donnees_entrainement": "b4b0c190f1e5f2b9225b0faa7b36ab2da38585e403e1b0b64d4c46dd20de7fd3",
+  "commit_git": "e4df465",
+  "triplets": {
+   "train": 1213,
+   "val": 89,
+   "test": 282
+  },
+  "separation": {
+   "test_docs": [
+    "SAN-ERR-011",
+    "UPS-ERR-031",
+    "UPS-MAN-030"
+   ],
+   "val_docs": [
+    "SAN-PSU-005",
+    "UPS-BAT-033",
+    "UPS-PROC-021"
+   ],
+   "exclus": [
+    "NOTE-EXT-099"
+   ]
+  },
+  "hyperparametres": {
+   "epochs": 2,
+   "learning_rate": 2e-05,
+   "batch": 16,
+   "max_length": 256
+  },
+  "mrr10_questions_generees": {
+   "base": {
+    "val": [
+     0.5448,
+     42
+    ],
+    "test": [
+     0.6565,
+     135
+    ]
+   },
+   "adapte": {
+    "val": [
+     0.6984,
+     42
+    ],
+    "test": [
+     0.8198,
+     135
+    ]
+   }
+  },
+  "mrr10_scenarios_rediges": {
+   "base": 0.7469,
+   "adapte": 0.6266
+  },
+  "statut": "évalué, non déployé (moins bon que le modèle d'origine sur les scénarios rédigés)",
+  "emplacement": "data/models/reranker-maintidoc"
+ }
+]

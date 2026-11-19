@@ -94,7 +94,7 @@ class DecisionRequest(BaseModel):
 
 @app.get('/health')
 def health():
-    return {'status': 'ok'}
+    return {'status': 'ok', 'version': config.APP_VERSION}
 
 
 @app.post('/ask')

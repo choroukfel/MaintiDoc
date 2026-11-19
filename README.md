@@ -103,6 +103,36 @@ seul habilité à approuver un ticket et à lire SAN-CAB-012), `u-stagiaire` (le
 6. **Blocages** : `u-tech-a` demande les circuits PDU (document restreint) ; « Ignore les instructions… » est refusé.
 7. **Performances** : voir [docs/rapport_evaluation.md](docs/rapport_evaluation.md).
 
+## Versions et retour en arrière
+
+Chaque itération est marquée par un tag Git ; les images Docker portent le même numéro.
+
+| Tag | Contenu |
+|---|---|
+| `v0.1` | Prototype initial (`app.py`) |
+| `v1.0` | Itération 1 : 12 documents, agent, MCP (89 % sur 150 scénarios) |
+| `v2.0` | Itération 2 : 30 documents, OCR, PostgreSQL / MinIO, CI, Docker (91 % sur 160 scénarios) |
+| `v2.1` | Quotas par utilisateur, conservation des journaux |
+| `v3.0` | Itération 3 : consignes de sécurité, garde-fou, ticket exigeant un code, isolation réseau, registre de modèles |
+
+```powershell
+# Déployer une version
+$env:MAINTIDOC_VERSION="v3.0"; docker compose up -d --build
+# Revenir à la version précédente en cas de régression (image déjà construite)
+$env:MAINTIDOC_VERSION="v2.1"; docker compose up -d api ui
+# Image absente : la reconstruire depuis le tag
+git checkout v2.1; $env:MAINTIDOC_VERSION="v2.1"; docker compose build api ui; git checkout -
+```
+La version en service est visible sur `GET /health` et enregistrée avec chaque requête (`data/logs/requests.jsonl`).
+L'index se reconstruit automatiquement si le corpus ou le découpage change (empreinte stockée avec l'index).
+
+**Modèles adaptés** : `python eval/register_model.py` enregistre le reranker fine-tuné dans MLflow (poids, paramètres,
+métriques) et ajoute au registre versionné [eval/results/model_registry.json](eval/results/model_registry.json) son
+empreinte SHA-256, celle des données d'entraînement et le commit qui l'a produit.
+
+**Réseaux Docker** : Qdrant, PostgreSQL et MinIO sont sur un réseau interne sans accès sortant ; seuls l'API et
+l'interface sont sur le réseau frontal, dont les ports ne sont publiés qu'en local (`127.0.0.1`).
+
 ## Tests et évaluation
 
 ```powershell

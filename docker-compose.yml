@@ -2,10 +2,18 @@
 #   docker compose up -d --build                    # Ollama déjà installé sur l'hôte (OLLAMA_HOST dans .env)
 #   docker compose --profile ollama up -d --build   # Ollama dans un conteneur (serveur, GPU conseillé)
 # Les secrets sont lus dans un fichier .env non versionné : voir .env.example.
+#
+# Versions et retour en arrière : les images de l'application sont étiquetées par MAINTIDOC_VERSION (tag Git).
+#   MAINTIDOC_VERSION=v3.0 docker compose up -d --build   # construit et lance la version courante
+#   MAINTIDOC_VERSION=v2.1 docker compose up -d           # revient à une image déjà construite (voir README)
+#
+# Réseaux : les bases de données (Qdrant, PostgreSQL, MinIO) sont sur un réseau INTERNE, sans accès à Internet ni
+# au réseau de l'hôte ; seuls l'API et l'interface sont sur le réseau « frontal » qui publie les ports (en local).
 services:
   qdrant:
     image: qdrant/qdrant:v1.20.0   # même version mineure que qdrant-client
     volumes: [qdrant_data:/qdrant/storage]
+    networks: [backend]
     restart: unless-stopped
 
   postgres:
@@ -15,6 +23,7 @@ services:
       POSTGRES_USER: maintidoc
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans .env}
     volumes: [pg_data:/var/lib/postgresql/data]
+    networks: [backend]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U maintidoc"]
       interval: 5s
@@ -24,21 +33,24 @@ services:
   # Stockage des documents dans MinIO : facultatif (profil « minio »). L'image officielle minio/minio n'est plus
   # publiée sur Docker Hub ; on utilise ici le fork communautaire pgsty/minio (à valider par votre politique de
   # sécurité, ou à remplacer par votre propre service S3). Activer avec MAINTIDOC_S3_ENDPOINT=minio:9000 dans .env.
+  # Réseau interne uniquement : pas de console publiée (administration par « docker compose exec minio mc … »).
   minio:
     image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     profiles: ["minio"]
-    command: server /data --console-address ":9001"
+    command: server /data
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-maintidoc}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-}
     volumes: [minio_data:/data]
-    ports: ["127.0.0.1:9001:9001"]   # console d'administration, accessible en local uniquement
+    networks: [backend]
     restart: unless-stopped
 
   ollama:
     image: ollama/ollama:0.12.0
     profiles: ["ollama"]
     volumes: [ollama_models:/root/.ollama]
+    # frontend : nécessaire pour télécharger les modèles (« ollama pull ») ; peut être retiré une fois les modèles en place
+    networks: [backend, frontend]
     restart: unless-stopped
     # Machine avec GPU NVIDIA (cible : 24 Go, qwen2.5vl:7b) :
     # deploy:
@@ -48,6 +60,7 @@ services:
 
   api:
     build: .
+    image: maintidoc-api:${MAINTIDOC_VERSION:-dev}
     env_file: .env
     environment:
       QDRANT_URL: http://qdrant:6333
@@ -58,8 +71,10 @@ services:
       MAINTIDOC_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MAINTIDOC_VLM: ${MAINTIDOC_VLM:-qwen2.5vl:3b}
       MAINTIDOC_MAX_SECONDS: ${MAINTIDOC_MAX_SECONDS:-600}
+      MAINTIDOC_VERSION: ${MAINTIDOC_VERSION:-dev}
     extra_hosts: ["host.docker.internal:host-gateway"]
     volumes: [app_data:/app/data]
+    networks: [backend, frontend]
     ports: ["127.0.0.1:8000:8000"]
     depends_on:
       qdrant: {condition: service_started}
@@ -68,12 +83,19 @@ services:
 
   ui:
     build: .
+    image: maintidoc-ui:${MAINTIDOC_VERSION:-dev}
     command: ["streamlit", "run", "ui/app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
     environment:
       MAINTIDOC_API: http://api:8000
+    networks: [frontend]
     ports: ["127.0.0.1:8501:8501"]
     depends_on: [api]
     restart: unless-stopped
+
+networks:
+  backend:
+    internal: true   # aucun accès sortant : les bases de données ne peuvent rien envoyer à l'extérieur
+  frontend: {}
 
 volumes:
   qdrant_data:

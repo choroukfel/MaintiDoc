@@ -60,6 +60,9 @@ os.environ.setdefault('MAINTIDOC_JWT_SECRET', secrets.token_hex(32))
 APPROVAL_SECRET = os.environ['MAINTIDOC_APPROVAL_SECRET']
 JWT_SECRET = os.environ['MAINTIDOC_JWT_SECRET']
 
+# Version de l'application (tag Git), injectée par Docker Compose ; enregistrée avec chaque requête.
+APP_VERSION = os.getenv('MAINTIDOC_VERSION', 'dev')
+
 PROMPT_VERSIONS = {'answer': 'answer_v1', 'visual': 'visual_analysis_v2', 'ticket': 'ticket_draft_v1',
                    'evidence_check': 'evidence_check_v2'}
 # Vérification de fidélité avant affichage (un appel au modèle de plus par réponse affirmative)

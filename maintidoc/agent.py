@@ -677,7 +677,7 @@ class Agent:
         return g.compile(checkpointer=MemorySaver())
 
     def versions(self) -> dict:
-        return {'model': getattr(self.llm, 'model', 'fake'), 'prompts': config.PROMPT_VERSIONS,
+        return {'app': config.APP_VERSION, 'model': getattr(self.llm, 'model', 'fake'), 'prompts': config.PROMPT_VERSIONS,
                 'reranker': self.retriever.reranker_mode, 'index': self.retriever.version.split('|')[0]}
 
     # ------------------------------------------------------------------ API publique
