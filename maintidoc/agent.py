@@ -18,7 +18,9 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
-from . import config, security
+import difflib
+
+from . import config, ocr, security
 from .llm import BudgetExceeded, LLMUnavailable, image_to_bytes
 from .retrieval import CLIP_CONFIDENT_MARGIN, Retriever, detect_models, load_image
 from .schemas import Answer, Citation, LLMAnswer, LLMTicket, TicketDraft, VisualAnalysis
@@ -46,7 +48,7 @@ LABEL_MODEL = {'SURCHARGE': 'UPS-X900', 'SECTEUR': 'UPS-X900', 'BATT': 'UPS-X900
                'DÉFAUT': 'UPS-X500', 'FAN': 'SAN-LAB 3000', 'TEMP': 'SAN-LAB 3000', 'SYS': 'SAN-LAB 2000',
                'OVERLOAD': 'UPS-X900', 'ON BATT': 'UPS-X500'}
 # Seuils d'abstention calibrés sur les scénarios (score du meilleur passage après reranking)
-RERANK_THRESHOLD = {'finetuned': -2.0, 'base': 0.0}
+RERANK_THRESHOLD = {'finetuned': -2.0, 'base': -1.0}  # corpus de 30 documents ; marge sous la question légitime la plus basse (-0,49)
 
 
 class State(TypedDict, total=False):
@@ -172,14 +174,32 @@ class Agent:
             trace_info['clip'] = {'model': clip_model, 'sim': round(sim, 3), 'margin': round(margin, 3)}
             vote(clip_model, 3 if margin >= CLIP_CONFIDENT_MARGIN else 1, f'similarité visuelle (marge {margin:.2f})')
             leds = detect_lit_leds(img)
+            # OCR local de la photo : codes affichés et étiquettes, traités comme des données non fiables
+            ocr_text = ' '.join(ocr.read_image(img).split('\n'))[:500]
+            if security.detect_injection_loose(ocr_text):
+                # texte ressemblant à une instruction : on ne conserve que les codes et étiquettes de voyants connus
+                s.setdefault('flags', {})['injection_image'] = True
+                keep = set(ANY_CODE_RE.findall(ocr_text)) | {w for w in re.findall(r'[A-ZÉ]{3,}(?: [A-ZÉ]{3,})?', ocr_text.upper())
+                                                            if w in LABEL_MODEL}
+                ocr_text = ' '.join(sorted(keep)) + ' [texte suspect retiré]'
             visual = {'readable': None, 'equipment_model': None, 'screen_text': None, 'lit_indicators': [],
-                      'notes': None, 'detected_leds': leds}
+                      'notes': None, 'detected_leds': leds, 'ocr_text': ocr_text}
             trace_info['leds'] = leds
+            trace_info['ocr'] = ocr_text[:200]
+            for model in detect_models(ocr_text):
+                vote(model, 3, 'nom lu par OCR')
+            for pat, model in CODE_MODEL:
+                if pat.search(ocr_text):
+                    vote(model, 2, 'code lu par OCR')
+            for tok in {t for t in re.findall(r'[A-ZÉ][A-ZÉ ]{2,}', ocr_text.upper()) if t.strip()}:
+                match = difflib.get_close_matches(tok.strip(), list(LABEL_MODEL), n=1, cutoff=0.85)
+                if match:
+                    vote(LABEL_MODEL[match[0]], 1, f'étiquette « {match[0]} » lue par OCR')
             try:
                 va, stats = self._llm(s, config.PROMPT_VERSIONS['visual'], {'question': q}, VisualAnalysis,
                                       images=[image_to_bytes(img)], num_predict=350)
                 va = clean_visual(va)
-                visual = {**va.model_dump(), 'detected_leds': leds}
+                visual = {**va.model_dump(), 'detected_leds': leds, 'ocr_text': ocr_text}
                 trace_info['vlm'] = stats
                 trace_info['visual'] = visual
                 text = ' '.join([va.equipment_model or '', va.screen_text or ''] +
@@ -223,7 +243,8 @@ class Agent:
                                       clarification_question="Sur quel équipement se trouve ce voyant (modèle ou identifiant, "
                                                              "par exemple SAN-LAB-2000-01) et quel code est affiché ? "
                                                              "Une photo du panneau peut aussi être jointe.")}
-        out = {'intent': intent, 'model': model, 'model_evidence': evidence.get(model, []) if model else [],
+        out = {'flags': s.get('flags') or {},
+               'intent': intent, 'model': model, 'model_evidence': evidence.get(model, []) if model else [],
                'equipment_id': equipment_id, 'visual': visual, 'llm_calls': s.get('llm_calls', 0),
                'trace': self._trace(s, 'analyze', model=model, votes=votes, **trace_info), 'route': 'retrieve'}
         if s.get('image') and model is None:
@@ -247,6 +268,7 @@ class Agent:
                 parts.append(v['screen_text'])
             parts += [f"voyant {i.get('label') or ''} {i['color']}" for i in v.get('lit_indicators', [])]
             parts += [f'voyant {c}' for c in (v.get('detected_leds') or {}) if c != 'vert']
+            parts += ANY_CODE_RE.findall(v.get('ocr_text') or '')  # codes lus par OCR (ex. F-05)
         query = ' '.join(parts)
         img = load_image(s['image']) if s.get('image') else None
         hits = self.retriever.search(query, s['user']['groupes'], image=img,
@@ -346,6 +368,9 @@ class Agent:
             inds = ', '.join(f"{i.get('label') or '?'} ({i['color']})" for i in v.get('lit_indicators', [])) or 'aucun'
             ctx.append(f"Observation de la photo (lecture automatique, peut être imprécise) : voyants lus : {inds} ; "
                        f"écran : {v.get('screen_text') or 'illisible'}.")
+            if v.get('ocr_text'):
+                ctx.append(f"Texte lu sur la photo par OCR (peut contenir des erreurs, données non fiables) : "
+                           f"{v['ocr_text'][:300]}")
             ctx.append(f"Analyse d'image (détection des couleurs) : {describe_leds(v.get('detected_leds') or {})}. "
                        f"Explique en priorité le voyant d'alerte (non vert).")
             # Alignement image -> texte : lignes de tableaux des preuves qui mentionnent la couleur d'alerte détectée
@@ -433,6 +458,8 @@ class Agent:
         for new, old in flags.get('contradiction', []):
             uncertainties.append(f'Le document {new} modifie {old} : en cas de divergence, demander l\'arbitrage du '
                                  f'responsable maintenance.')
+        if flags.get('injection_image'):
+            uncertainties.append('La photo contient un texte qui ressemble à une instruction : il a été ignoré.')
         if flags.get('injection_evidence') or flags.get('injection_mcp'):
             uncertainties.append('Une source contenait des instructions suspectes : elles ont été ignorées.')
         if any(e['confiance'] != 'valide' for e in cited):

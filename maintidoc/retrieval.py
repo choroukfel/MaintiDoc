@@ -16,6 +16,7 @@ import numpy as np
 from PIL import Image
 
 from . import config, ingestion
+from . import ocr as ocr_mod
 
 MODEL_PATTERNS = [
     (re.compile(r'SAN[\s-]*LAB[\s-]*2000', re.I), 'SAN-LAB 2000'),
@@ -128,7 +129,7 @@ class Retriever:
     def _load_or_build(self):
         from qdrant_client import models as qm
         state_file = self.index_dir / 'state.json'
-        version = f"{ingestion.corpus_hash()}|{config.TEXT_EMBED_MODEL}|{config.CLIP_MODEL}|vues{len(PHOTO_VIEWS)}"
+        version = f"{ingestion.corpus_hash()}|{config.TEXT_EMBED_MODEL}|{config.CLIP_MODEL}|vues{len(PHOTO_VIEWS)}|ocr{int(ocr_mod.ENABLED)}"
         state = json.loads(state_file.read_text(encoding='utf-8')) if state_file.exists() else {}
         collections = {c.name for c in self.qdrant.get_collections().collections}
         if state.get('version') != version or not {'units', 'figures'} <= collections:
@@ -291,7 +292,8 @@ class Retriever:
     def render_page(self, document_id: str, page: int, dpi: int = 90) -> bytes:
         import pymupdf
         meta = self.metadata[document_id]
-        with pymupdf.open(config.CORPUS_DIR / meta['fichier']) as pdf:
+        from .storage import get_storage
+        with pymupdf.open(stream=get_storage().read(meta['fichier']), filetype='pdf') as pdf:
             return pdf[page - 1].get_pixmap(dpi=dpi).tobytes('png')
 
 

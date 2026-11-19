@@ -22,35 +22,39 @@ Streamlit (ui/app.py) ──HTTP──> FastAPI (api/main.py) : JWT, rôles, acc
       │                 │                      │                     │
  security.py     retrieval.py            llm.py (Ollama)       mcp_client.py ──stdio──> mcp_server/server.py
  (injections,    Qdrant + BM25 + CLIP,   Qwen2.5-VL, JSON      get_equipment_history / get_open_tickets /
- jetons HMAC)    RRF, reranker adapté    contraint (Pydantic)  create_ticket (jeton + idempotence, SQLite)
+ jetons HMAC)    RRF, reranker           contraint (Pydantic)  create_ticket (jeton + idempotence)
+                 ocr.py (EasyOCR)        vision.py (voyants)   SQLite ou PostgreSQL
+                 storage.py : documents en dossier local ou dans MinIO
 ```
 
 | Composant | Choix | Remarque |
 |---|---|---|
 | Modèle vision-langage | Qwen2.5-VL via Ollama | 3B sur le poste CPU, 7B recommandé sur GPU 24 Go |
 | Orchestration | LangGraph (état, budgets, `interrupt`) + LangChain (prompts) | |
-| Recherche vectorielle | Qdrant (embarqué, ou serveur via `QDRANT_URL`) | |
+| Recherche vectorielle | Qdrant (embarqué, ou serveur via `QDRANT_URL`) | serveur dans Docker Compose |
 | Embeddings texte | paraphrase-multilingual-MiniLM-L12-v2 | BGE-M3 trop lourd pour le poste (variable `MAINTIDOC_TEXT_EMBED`) |
 | Recherche visuelle | CLIP ViT-B/32 (photo → figures du corpus) | |
 | Lexical | BM25 (codes d'alarme : F-05, AL-31…) | |
-| Fusion et reranking | RRF + cross-encoder mmarco-mMiniLMv2 **fine-tuné** | `eval/finetune_reranker.py` |
-| Extraction | PyMuPDF (texte, tableaux ligne par ligne, figures + légendes) | |
-| Outils | Serveur MCP (SDK `mcp` 2.x, stdio) + SQLite | |
+| Fusion et reranking | RRF + cross-encoder mmarco-mMiniLMv2 | version fine-tunée comparée (`eval/finetune_reranker.py`) |
+| Extraction | PyMuPDF (texte, tableaux ligne par ligne, figures + légendes) + **OCR local EasyOCR** | pages scannées, texte des figures, photos |
+| Outils | Serveur MCP (SDK `mcp` 2.x, stdio) | base SQLite (développement) ou **PostgreSQL** (`MAINTIDOC_DB_URL`) |
+| Stockage des documents | dossier `corpus/` ou **MinIO** (`MAINTIDOC_S3_ENDPOINT`) | MinIO amorcé automatiquement au premier démarrage |
 | API / UI | FastAPI + Streamlit | |
-| Suivi / déploiement | MLflow (`mlruns/`) + Docker Compose | |
+| Suivi / déploiement | MLflow (`mlruns/`) + Docker Compose + CI GitHub Actions | `.github/workflows/ci.yml` |
 
 ## Arborescence
 
 ```
-maintidoc/      cœur : config, ingestion, retrieval, llm, security, agent, schemas, mcp_client
+maintidoc/      cœur : config, ingestion, ocr, vision, storage, retrieval, llm, security, agent, schemas, mcp_client
 mcp_server/     serveur MCP de maintenance + données fictives (équipements, historique, tickets, utilisateurs)
 api/  ui/       API FastAPI et interface Streamlit
-prompts/        prompts versionnés (answer_v1, visual_analysis_v1, ticket_draft_v1, evidence_check_v1)
-corpus/         12 PDF fictifs + metadata.json (groupes d'accès, versions, niveau de confiance)
+prompts/        prompts versionnés (answer_v1, visual_analysis_v1 puis v2, ticket_draft_v1, evidence_check_v1)
+corpus/         30 PDF fictifs (dont 2 scannés) + metadata.json (groupes d'accès, versions, niveau de confiance)
 scripts/        génération du corpus et des figures
-eval/           150 scénarios, photos de test, fine-tuning, évaluation, résultats
+eval/           160 scénarios, photos de test, fine-tuning, évaluation, résultats (et ceux de l'itération 1)
 tests/          tests automatisés (pytest)
 docs/           note de cadrage, fiche de limites, rapport d'évaluation
+.github/        chaîne CI (analyse statique, secrets, audit des dépendances, tests, image Docker)
 app.py          prototype initial (conservé pour mémoire)
 ```
 
@@ -59,7 +63,7 @@ app.py          prototype initial (conservé pour mémoire)
 ```powershell
 python -m venv .venv
 .venv\Scripts\activate
-pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install torch==2.15.0 torchvision==0.29.2 --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 # Ollama : https://ollama.com/download
 ollama pull qwen2.5vl:3b
@@ -73,6 +77,18 @@ uvicorn api.main:app --port 8000
 # 2. Interface, dans un second terminal
 streamlit run ui/app.py
 ```
+
+### Avec Docker Compose (Qdrant, PostgreSQL, MinIO, API, interface)
+
+```powershell
+copy .env.example .env      # puis remplacer toutes les valeurs (mots de passe, secrets)
+docker compose up -d --build
+# interface : http://localhost:8501  ·  API : http://localhost:8000/health  ·  console MinIO : http://localhost:9001
+```
+Par défaut, l'API utilise l'Ollama installé sur la machine hôte (`OLLAMA_HOST` dans `.env`). Sur un serveur,
+`--profile ollama` démarre aussi Ollama dans un conteneur, et `--profile minio` stocke les documents dans MinIO
+(avec `MAINTIDOC_S3_ENDPOINT=minio:9000`). Sur le poste de développement, ajouter
+`-f docker-compose.local.yml` réutilise les modèles déjà téléchargés.
 
 Utilisateurs fictifs : `u-tech-a` (technicien SAN), `u-tech-b` (technicien onduleurs), `u-resp-1` (responsable,
 seul habilité à approuver un ticket et à lire SAN-CAB-012), `u-stagiaire` (lecture seule).
@@ -90,33 +106,38 @@ seul habilité à approuver un ticket et à lire SAN-CAB-012), `u-stagiaire` (le
 ## Tests et évaluation
 
 ```powershell
-pytest                                   # 52 tests automatisés (LLM simulé, MCP réel en stdio)
-python eval/finetune_reranker.py         # fine-tuning du reranker (CPU, environ 15 min)
+pytest                                   # 57 tests automatisés (LLM simulé, MCP réel en stdio, OCR réel)
+python eval/finetune_reranker.py         # fine-tuning du reranker (CPU, environ 30 min)
 python eval/run_eval.py retrieval        # Recall@5, nDCG@5, MRR@10 (5 configurations)
-python eval/run_eval.py e2e              # 150 scénarios avec le vrai modèle (plusieurs heures sur CPU)
+python eval/run_eval.py e2e              # 160 scénarios avec le vrai modèle (plusieurs heures sur CPU)
 python eval/run_eval.py report           # rapport : docs/rapport_evaluation.md
 ```
 
 ## Résultats (détail dans [docs/rapport_evaluation.md](docs/rapport_evaluation.md))
 
-Mesurés sur un PC portable sans GPU (i5, 15 Go de RAM), avec Qwen2.5-VL 3B :
+Mesurés sur un PC portable sans GPU (i5, 15 Go de RAM), avec Qwen2.5-VL 3B, corpus de 30 documents :
 
-| Catégorie (150 scénarios) | Réussite |
+| Catégorie (160 scénarios) | Réussite |
 |---|---|
 | Questions documentaires textuelles (40) | 90 % |
-| Questions avec photo (30) | 70 % |
-| Consultation MCP (20) | 90 % |
-| Sources absentes ou contradictoires (20) | 90 % |
+| Questions avec photo (30) | 80 % |
+| Consultation MCP (20) | 100 % |
+| Sources absentes ou contradictoires (20) | 85 % |
 | Contrôle d'accès et validation humaine (20) | 100 % |
 | Injections de prompt (20) | 100 % |
-| **Total** | **89 % (133 / 150)** |
+| Corpus étendu et OCR (10) | 90 % |
+| **Total** | **91 % (146 / 160)** |
 
-- **Sécurité** : 0 ticket créé sans approbation, 0 document interdit dans les preuves, 20 injections sur 20 neutralisées.
-- **Citations** : 100 % pointent vers une preuve réellement récupérée ; 85 % citent un élément de référence.
-- **Recherche** : le reranker fait passer le MRR@10 de 0,54 (hybride) à 0,72, et la photo l'améliore de 0,32 à 0,45. Le
-  reranker fine-tuné progresse sur ses questions de test (0,76 → 0,90) mais pas sur les questions rédigées à la main :
-  le reranker d'origine reste utilisé par défaut.
-- **Latence (CPU)** : médiane de 36 s (texte) et 81 s (photo) ; p95 de 65 s et 165 s.
+- **Sécurité** : 0 ticket créé sans approbation, 0 document interdit dans les preuves, 20 injections sur 20 neutralisées
+  (documents, document scanné, photo, réponse MCP).
+- **Citations** : 100 % pointent vers une preuve réellement récupérée ; 78 % citent un élément de référence.
+- **Recherche** : le reranker fait passer le MRR@10 de 0,55 (hybride) à 0,75. Le reranker fine-tuné progresse sur ses
+  propres questions de test (0,66 → 0,82) mais pas sur les questions rédigées à la main (0,63) : le reranker
+  d'origine reste utilisé par défaut.
+- **Point de vigilance** : une réponse affirme qu'on peut retirer deux disques à la fois, contrairement à la source
+  citée (voir le rapport) ; une vérification de fidélité est à ajouter avant toute mise en service.
+- **Latence (CPU)** : médiane de 38 s (texte) et 77 s (photo) ; p95 de 64 s et 175 s.
+- **Itération 1** (12 documents, sans OCR) : 89 % sur les 150 scénarios du sujet, contre 91 % à l'itération 2.
 
 ## Sécurité (résumé)
 - **Secrets** : injectés par variables d'environnement (`.env`, ignoré par Git), jamais dans les prompts ni dans les journaux.

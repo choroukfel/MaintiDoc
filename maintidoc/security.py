@@ -40,6 +40,24 @@ def detect_injection(text: str) -> list[str]:
     return [m.group(0) for p in _INJ for m in [p.search(text or '')] if m]
 
 
+# Paires de mots dangereux pour le texte OCR, dont l'ordre et l'orthographe sont souvent altérés
+_LOOSE_PAIRS = [('ignore', 'instructions'), ('ignore', 'regles'), ('sans', 'approbation'), ('approuve', 'automatiquement'),
+                ('envoie', 'externe'), ('ignore', 'previous')]
+
+
+def detect_injection_loose(text: str) -> bool:
+    """Détection tolérante (texte OCR) : paires de mots-clés en correspondance approchée, quel que soit l'ordre."""
+    import difflib
+    import unicodedata
+    norm = unicodedata.normalize('NFKD', (text or '').lower())
+    norm = ''.join(c for c in norm if not unicodedata.combining(c)).replace('1', 'i').replace('|', 'i')
+    words = re.findall(r'[a-z]{4,}', norm)
+
+    def present(kw):
+        return any(difflib.SequenceMatcher(None, kw, w).ratio() >= 0.75 for w in words)
+    return bool(detect_injection(text)) or any(present(a) and present(b) for a, b in _LOOSE_PAIRS)
+
+
 def sanitize(text: str) -> tuple[str, bool]:
     """Remplace les phrases contenant une tentative d'injection. Retourne (texte, suspect)."""
     sentences = re.split(r'(?<=[.!?\n])\s+', text)

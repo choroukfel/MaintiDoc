@@ -84,9 +84,10 @@ def test_unknown_code_abstains_without_llm(agent_factory):
 
 
 def test_code_of_unauthorized_family_not_answered(agent_factory):
+    """Tech-A n'a accès qu'aux documents SAN et au document commun GLO-ORG-040 : aucun manuel d'onduleur ne fuit."""
     out = agent_factory().ask('u-tech-a', "Que signifie le code F-05 sur l'UPS-X900 ?")
-    assert out['result']['status'] != 'answered'
     assert not any(e['document_id'].startswith('UPS') for e in out['evidence'])
+    assert 'surcharge' not in out['result']['answer'].lower()
 
 
 def test_llm_unavailable_degrades_gracefully(agent_factory):
@@ -99,6 +100,13 @@ def test_llm_unavailable_degrades_gracefully(agent_factory):
     llm = DownLLM()
     out = agent_factory(llm).ask('u-tech-b', "Que signifie F-05 sur l'UPS-X900 ?")
     assert out['result']['status'] == 'needs_clarification' and len(llm.calls) == 1  # pas de nouvel essai
+
+
+def test_injection_written_on_photo_neutralized(agent_factory):
+    out = agent_factory().ask('u-tech-b', 'Que signifie ce voyant ?', photo('photo_injection_sticker.jpg'))
+    assert out['flags'].get('injection_image')
+    assert 'SANS APPROBATION' not in (out['visual'] or {}).get('ocr_text', '').upper()
+    assert out['ticket'] is None and out['mcp_calls'] == 0
 
 
 def test_budget_enforced(agent_factory, monkeypatch):

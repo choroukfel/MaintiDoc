@@ -23,7 +23,7 @@ from maintidoc import config  # noqa: E402
 from maintidoc.retrieval import Retriever, normalize  # noqa: E402
 
 TEST_DOCS = {'UPS-MAN-030', 'UPS-ERR-031', 'SAN-ERR-011'}
-VAL_DOCS = {'UPS-PROC-021'}
+VAL_DOCS = {'UPS-PROC-021', 'SAN-PSU-005', 'UPS-BAT-033'}
 EXCLUDE = {'NOTE-EXT-099'}  # document de test de sécurité, jamais utilisé pour l'entraînement
 OUT_DATA = ROOT / 'eval' / 'data'
 rng = random.Random(42)
@@ -43,17 +43,27 @@ def questions_for(header, row, model):
     qs = []
     code = next((d[k] for k in d if k.startswith('code') and re.match(r'^[A-Z]+-\d+', d[k] or '')), None)
     voyant = next((d[k] for k in d if k in ('voyant', 'led', 'combinaison observee')), None)
-    couleur = next((d[k] for k in d if k.startswith('couleur')), '')
-    etat = d.get('etat', '')
+    couleur = (next((d[k] for k in d if k.startswith('couleur')), '') or '').lower()
+    etat = (d.get('etat', '') or '').lower()
+    first = (row[0] or '').strip()
+    # v2 : formulations variées (registre courant, fautes, sans modèle) pour éviter le surapprentissage des gabarits
     if code:
-        qs += [f'Que signifie le code {code}{on} ?', f'Alarme {code}{on} : quelle conduite tenir ?',
-               f'{code} signification']
+        qs += rng.sample([f'Que signifie le code {code}{on} ?', f'Alarme {code}{on} : quelle conduite tenir ?',
+                          f'{code} signification', f"J'ai {code} qui s'affiche{on}, c'est quoi ?",
+                          f'Que faire face à {code} ?', f'le {code} c grave ?', f"explication de l'alerte {code}{on}",
+                          f'{code} : faut-il escalader ?'], 3)
     if voyant:
-        qs += [f'Que signifie le voyant {voyant} {couleur} {etat}{on} ?'.replace('  ', ' '),
-               f'{m or "Équipement"} : voyant {voyant} {couleur}, que faire ?']
-    if not code and not voyant and row[0]:
-        qs += [f'{row[0]}{on} ?', f'Quelle est la valeur de « {row[0]} »{on} ?',
-               f"Que dit la documentation{on} à propos de {row[0].lower()} ?"]
+        qs += rng.sample([f'Que signifie le voyant {voyant} {couleur} {etat}{on} ?',
+                          f'{m or "Équipement"} : voyant {voyant} {couleur}, que faire ?',
+                          f'Pourquoi le voyant {voyant} est {couleur}{on} ?',
+                          f"voyant {couleur} allumé sur {voyant}, c'est normal ?",
+                          f"Le témoin {voyant} s'allume en {couleur}, quelle est la cause ?",
+                          f'{voyant} {couleur} {etat} ça veut dire quoi'], 3)
+    if not code and not voyant and first:
+        qs += rng.sample([f'{first}{on} ?', f'Quelle est la valeur de « {first} »{on} ?',
+                          f'Que dit la documentation{on} à propos de {first.lower()} ?',
+                          f"Donne-moi l'information « {first.lower()} »{on}", f'{first.lower()} : quelle valeur{on} ?',
+                          f'Je cherche {first.lower()}{on}'], 3)
     return [re.sub(r'\s+', ' ', q).strip() for q in qs]
 
 

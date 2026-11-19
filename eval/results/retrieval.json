@@ -1,162 +1,187 @@
 {
  "configurations": {
   "dense": {
-   "n": 73,
-   "recall@5": 0.7078,
-   "ndcg@5": 0.4619,
-   "mrr@10": 0.408,
+   "n": 82,
+   "recall@5": 0.5407,
+   "ndcg@5": 0.4035,
+   "mrr@10": 0.4032,
    "n_docs_test": 18,
-   "recall@5 (docs test)": 0.6944,
-   "ndcg@5 (docs test)": 0.5215,
-   "mrr@10 (docs test)": 0.4745,
+   "recall@5 (docs test)": 0.75,
+   "ndcg@5 (docs test)": 0.5952,
+   "mrr@10 (docs test)": 0.5667,
    "par_categorie": {
     "absent_contradictoire": {
-     "recall@5": 0.875,
-     "ndcg@5": 0.6713,
-     "mrr@10": 0.6458
+     "recall@5": 0.625,
+     "ndcg@5": 0.5566,
+     "mrr@10": 0.619
     },
     "acces_validation": {
      "recall@5": 1.0,
-     "ndcg@5": 1.0,
-     "mrr@10": 1.0
+     "ndcg@5": 0.6309,
+     "mrr@10": 0.5
+    },
+    "corpus_etendu": {
+     "recall@5": 0.7407,
+     "ndcg@5": 0.5888,
+     "mrr@10": 0.5963
     },
     "image": {
-     "recall@5": 0.5952,
-     "ndcg@5": 0.2915,
-     "mrr@10": 0.2195
+     "recall@5": 0.2202,
+     "ndcg@5": 0.1343,
+     "mrr@10": 0.1683
     },
     "texte": {
-     "recall@5": 0.7625,
-     "ndcg@5": 0.5468,
-     "mrr@10": 0.5012
+     "recall@5": 0.7,
+     "ndcg@5": 0.5292,
+     "mrr@10": 0.5002
     }
    }
   },
   "bm25": {
-   "n": 73,
-   "recall@5": 0.7123,
-   "ndcg@5": 0.6258,
-   "mrr@10": 0.638,
+   "n": 82,
+   "recall@5": 0.6911,
+   "ndcg@5": 0.6283,
+   "mrr@10": 0.6467,
    "n_docs_test": 18,
-   "recall@5 (docs test)": 0.6944,
-   "ndcg@5 (docs test)": 0.7007,
-   "mrr@10 (docs test)": 0.7315,
+   "recall@5 (docs test)": 0.8333,
+   "ndcg@5 (docs test)": 0.8167,
+   "mrr@10 (docs test)": 0.8833,
    "par_categorie": {
     "absent_contradictoire": {
      "recall@5": 0.875,
-     "ndcg@5": 0.6981,
-     "mrr@10": 0.6875
+     "ndcg@5": 0.722,
+     "mrr@10": 0.675
     },
     "acces_validation": {
      "recall@5": 1.0,
      "ndcg@5": 1.0,
      "mrr@10": 1.0
     },
+    "corpus_etendu": {
+     "recall@5": 0.963,
+     "ndcg@5": 0.9612,
+     "mrr@10": 1.0
+    },
     "image": {
-     "recall@5": 0.2857,
-     "ndcg@5": 0.2195,
-     "mrr@10": 0.2961
+     "recall@5": 0.1429,
+     "ndcg@5": 0.1187,
+     "mrr@10": 0.2101
     },
     "texte": {
      "recall@5": 0.9875,
-     "ndcg@5": 0.8936,
-     "mrr@10": 0.8633
+     "ndcg@5": 0.8915,
+     "mrr@10": 0.8612
     }
    }
   },
   "hybride RRF": {
-   "n": 73,
-   "recall@5": 0.7671,
-   "ndcg@5": 0.5726,
-   "mrr@10": 0.5377,
+   "n": 82,
+   "recall@5": 0.8089,
+   "ndcg@5": 0.5826,
+   "mrr@10": 0.546,
    "n_docs_test": 18,
-   "recall@5 (docs test)": 0.7222,
-   "ndcg@5 (docs test)": 0.6003,
-   "mrr@10 (docs test)": 0.5694,
+   "recall@5 (docs test)": 0.8333,
+   "ndcg@5 (docs test)": 0.7339,
+   "mrr@10 (docs test)": 0.7593,
    "par_categorie": {
     "absent_contradictoire": {
      "recall@5": 0.875,
-     "ndcg@5": 0.7653,
-     "mrr@10": 0.8125
+     "ndcg@5": 0.7892,
+     "mrr@10": 0.8
     },
     "acces_validation": {
      "recall@5": 1.0,
      "ndcg@5": 1.0,
      "mrr@10": 1.0
     },
+    "corpus_etendu": {
+     "recall@5": 0.963,
+     "ndcg@5": 0.8218,
+     "mrr@10": 0.7963
+    },
     "image": {
-     "recall@5": 0.5714,
-     "ndcg@5": 0.3397,
-     "mrr@10": 0.3025
+     "recall@5": 0.631,
+     "ndcg@5": 0.3091,
+     "mrr@10": 0.272
     },
     "texte": {
      "recall@5": 0.8875,
-     "ndcg@5": 0.7057,
-     "mrr@10": 0.6633
+     "ndcg@5": 0.6891,
+     "mrr@10": 0.6447
     }
    }
   },
   "hybride + reranker origine": {
-   "n": 73,
-   "recall@5": 0.7922,
-   "ndcg@5": 0.7061,
-   "mrr@10": 0.7185,
+   "n": 82,
+   "recall@5": 0.8049,
+   "ndcg@5": 0.7206,
+   "mrr@10": 0.7469,
    "n_docs_test": 18,
-   "recall@5 (docs test)": 0.6944,
-   "ndcg@5 (docs test)": 0.5805,
-   "mrr@10 (docs test)": 0.5565,
+   "recall@5 (docs test)": 0.75,
+   "ndcg@5 (docs test)": 0.6235,
+   "mrr@10 (docs test)": 0.6375,
    "par_categorie": {
     "absent_contradictoire": {
-     "recall@5": 1.0,
-     "ndcg@5": 0.8811,
-     "mrr@10": 1.0
+     "recall@5": 0.75,
+     "ndcg@5": 0.6685,
+     "mrr@10": 0.7917
     },
     "acces_validation": {
      "recall@5": 1.0,
      "ndcg@5": 1.0,
      "mrr@10": 1.0
     },
+    "corpus_etendu": {
+     "recall@5": 0.963,
+     "ndcg@5": 0.9635,
+     "mrr@10": 1.0
+    },
     "image": {
-     "recall@5": 0.4583,
-     "ndcg@5": 0.3932,
-     "mrr@10": 0.4595
+     "recall@5": 0.4762,
+     "ndcg@5": 0.4203,
+     "mrr@10": 0.5272
     },
     "texte": {
      "recall@5": 1.0,
-     "ndcg@5": 0.9002,
-     "mrr@10": 0.8646
+     "ndcg@5": 0.8743,
+     "mrr@10": 0.8329
     }
    }
   },
   "hybride + reranker adapté": {
-   "n": 73,
-   "recall@5": 0.7717,
-   "ndcg@5": 0.6993,
-   "mrr@10": 0.7165,
+   "n": 82,
+   "recall@5": 0.7195,
+   "ndcg@5": 0.6179,
+   "mrr@10": 0.6266,
    "n_docs_test": 18,
-   "recall@5 (docs test)": 0.6111,
-   "ndcg@5 (docs test)": 0.4829,
-   "mrr@10 (docs test)": 0.4663,
+   "recall@5 (docs test)": 0.5556,
+   "ndcg@5 (docs test)": 0.443,
+   "mrr@10 (docs test)": 0.4637,
    "par_categorie": {
     "absent_contradictoire": {
-     "recall@5": 1.0,
-     "ndcg@5": 0.8552,
-     "mrr@10": 0.8125
+     "recall@5": 0.75,
+     "ndcg@5": 0.6627,
+     "mrr@10": 0.6667
     },
     "acces_validation": {
      "recall@5": 1.0,
      "ndcg@5": 1.0,
      "mrr@10": 1.0
     },
+    "corpus_etendu": {
+     "recall@5": 0.8519,
+     "ndcg@5": 0.8091,
+     "mrr@10": 0.8333
+    },
     "image": {
-     "recall@5": 0.4583,
-     "ndcg@5": 0.384,
-     "mrr@10": 0.4454
+     "recall@5": 0.369,
+     "ndcg@5": 0.2398,
+     "mrr@10": 0.2874
     },
     "texte": {
-     "recall@5": 0.9625,
-     "ndcg@5": 0.8969,
-     "mrr@10": 0.8896
+     "recall@5": 0.925,
+     "ndcg@5": 0.8256,
+     "mrr@10": 0.8042
     }
    }
   }
@@ -164,317 +189,317 @@
  "texte_vs_multimodal": {
   "texte seul": {
    "n": 28,
-   "recall@5": 0.3929,
-   "ndcg@5": 0.2664,
-   "mrr@10": 0.323
+   "recall@5": 0.3333,
+   "ndcg@5": 0.2033,
+   "mrr@10": 0.2585
   },
   "multimodal (photo)": {
    "n": 28,
-   "recall@5": 0.4583,
-   "ndcg@5": 0.384,
-   "mrr@10": 0.4454
+   "recall@5": 0.369,
+   "ndcg@5": 0.2398,
+   "mrr@10": 0.2874
   }
  },
  "scores_abstention": [
   {
    "id": "TEX-01",
    "in_scope": true,
-   "score": 6.26714563369751
+   "score": 4.645732879638672
   },
   {
    "id": "TEX-02",
    "in_scope": true,
-   "score": 9.416169166564941
+   "score": 7.300185680389404
   },
   {
    "id": "TEX-03",
    "in_scope": true,
-   "score": 5.872162342071533
+   "score": 4.532426357269287
   },
   {
    "id": "TEX-04",
    "in_scope": true,
-   "score": 3.124525785446167
+   "score": 2.8316869735717773
   },
   {
    "id": "TEX-05",
    "in_scope": true,
-   "score": 4.26884126663208
+   "score": 3.0857348442077637
   },
   {
    "id": "TEX-06",
    "in_scope": true,
-   "score": 4.015209674835205
+   "score": 3.241543769836426
   },
   {
    "id": "TEX-07",
    "in_scope": true,
-   "score": 2.9817566871643066
+   "score": 0.8278135657310486
   },
   {
    "id": "TEX-08",
    "in_scope": true,
-   "score": 6.2523274421691895
+   "score": 5.084637641906738
   },
   {
    "id": "TEX-09",
    "in_scope": true,
-   "score": -1.155663013458252
+   "score": -3.424806833267212
   },
   {
    "id": "TEX-10",
    "in_scope": true,
-   "score": -1.9574276208877563
+   "score": -3.413114309310913
   },
   {
    "id": "TEX-11",
    "in_scope": true,
-   "score": 9.620818138122559
+   "score": 8.129319190979004
   },
   {
    "id": "TEX-12",
    "in_scope": true,
-   "score": 4.543004989624023
+   "score": 4.159735679626465
   },
   {
    "id": "TEX-13",
    "in_scope": true,
-   "score": -9.373559951782227
+   "score": -5.739601135253906
   },
   {
    "id": "TEX-14",
    "in_scope": true,
-   "score": 6.720446586608887
+   "score": 4.629650592803955
   },
   {
    "id": "TEX-15",
    "in_scope": true,
-   "score": 5.305018901824951
+   "score": 3.193288803100586
   },
   {
    "id": "TEX-16",
    "in_scope": true,
-   "score": 2.6007080078125
+   "score": 2.5003299713134766
   },
   {
    "id": "TEX-17",
    "in_scope": true,
-   "score": 5.584595203399658
+   "score": 4.875269889831543
   },
   {
    "id": "TEX-18",
    "in_scope": true,
-   "score": 0.7834264039993286
+   "score": 0.3402894139289856
   },
   {
    "id": "TEX-19",
    "in_scope": true,
-   "score": -1.4253835678100586
+   "score": -4.25932502746582
   },
   {
    "id": "TEX-20",
    "in_scope": true,
-   "score": 4.950967311859131
+   "score": 3.83925461769104
   },
   {
    "id": "TEX-21",
    "in_scope": true,
-   "score": 1.1132605075836182
+   "score": -1.9787404537200928
   },
   {
    "id": "TEX-22",
    "in_scope": true,
-   "score": -8.689469337463379
+   "score": -6.821897983551025
   },
   {
    "id": "TEX-23",
    "in_scope": true,
-   "score": 2.4918437004089355
+   "score": 2.8262758255004883
   },
   {
    "id": "TEX-24",
    "in_scope": true,
-   "score": 4.705564498901367
+   "score": 4.008274078369141
   },
   {
    "id": "TEX-25",
    "in_scope": true,
-   "score": 5.041867256164551
+   "score": 4.830893516540527
   },
   {
    "id": "TEX-26",
    "in_scope": true,
-   "score": 2.3348498344421387
+   "score": 0.5876712799072266
   },
   {
    "id": "TEX-27",
    "in_scope": true,
-   "score": 8.319023132324219
+   "score": 6.888627052307129
   },
   {
    "id": "TEX-28",
    "in_scope": true,
-   "score": 2.603841781616211
+   "score": 2.1648635864257812
   },
   {
    "id": "TEX-29",
    "in_scope": true,
-   "score": -3.988586902618408
+   "score": -0.9032658338546753
   },
   {
    "id": "TEX-30",
    "in_scope": true,
-   "score": 1.2280504703521729
+   "score": 1.4689713716506958
   },
   {
    "id": "TEX-31",
    "in_scope": true,
-   "score": -0.7976346611976624
+   "score": -2.1006999015808105
   },
   {
    "id": "TEX-32",
    "in_scope": true,
-   "score": 5.926446437835693
+   "score": 4.81644344329834
   },
   {
    "id": "TEX-33",
    "in_scope": true,
-   "score": -2.9154677391052246
+   "score": -3.744502067565918
   },
   {
    "id": "TEX-34",
    "in_scope": true,
-   "score": -9.038880348205566
+   "score": 0.8379173278808594
   },
   {
    "id": "TEX-35",
    "in_scope": true,
-   "score": 5.424647331237793
+   "score": 3.5849742889404297
   },
   {
    "id": "TEX-36",
    "in_scope": true,
-   "score": 8.035435676574707
+   "score": 5.9698028564453125
   },
   {
    "id": "TEX-37",
    "in_scope": true,
-   "score": 0.10339266806840897
+   "score": 0.40321096777915955
   },
   {
    "id": "TEX-38",
    "in_scope": true,
-   "score": -0.6009082198143005
+   "score": -3.3123743534088135
   },
   {
    "id": "TEX-39",
    "in_scope": true,
-   "score": -0.9632587432861328
+   "score": -5.334322929382324
   },
   {
    "id": "TEX-40",
    "in_scope": true,
-   "score": 4.6636128425598145
+   "score": 3.7677321434020996
   },
   {
    "id": "ABS-01",
    "in_scope": false,
-   "score": -6.232640743255615
+   "score": -4.6153154373168945
   },
   {
    "id": "ABS-02",
    "in_scope": false,
-   "score": -4.581430912017822
+   "score": -4.361902713775635
   },
   {
    "id": "ABS-03",
    "in_scope": false,
-   "score": -7.84758996963501
+   "score": -6.692660808563232
   },
   {
    "id": "ABS-04",
    "in_scope": false,
-   "score": 3.4977011680603027
+   "score": 2.946812629699707
   },
   {
    "id": "ABS-05",
    "in_scope": false,
-   "score": -6.767600059509277
+   "score": -6.692354202270508
   },
   {
    "id": "ABS-06",
    "in_scope": false,
-   "score": -4.172031879425049
+   "score": -4.466313362121582
   },
   {
    "id": "ABS-07",
    "in_scope": false,
-   "score": -4.85823392868042
+   "score": -6.639463424682617
   },
   {
    "id": "ABS-08",
    "in_scope": false,
-   "score": -3.8416929244995117
+   "score": -6.773304462432861
   },
   {
    "id": "ABS-09",
    "in_scope": false,
-   "score": -2.6164321899414062
+   "score": -1.6671477556228638
   },
   {
    "id": "ABS-10",
    "in_scope": false,
-   "score": -8.845254898071289
+   "score": -9.24964714050293
   },
   {
    "id": "ABS-11",
    "in_scope": false,
-   "score": -7.471833229064941
+   "score": -6.441920757293701
   },
   {
    "id": "ABS-12",
    "in_scope": false,
-   "score": -7.591019153594971
+   "score": -7.101908206939697
   },
   {
    "id": "ABS-13",
    "in_scope": true,
-   "score": 1.5423274040222168
+   "score": -0.2568945586681366
   },
   {
    "id": "ABS-14",
    "in_scope": true,
-   "score": 3.5850558280944824
+   "score": 0.5572715997695923
   },
   {
    "id": "ABS-15",
    "in_scope": true,
-   "score": -7.635080337524414
+   "score": -5.315758228302002
   },
   {
    "id": "ABS-16",
    "in_scope": true,
-   "score": 1.8056316375732422
+   "score": 1.0535591840744019
   },
   {
    "id": "ABS-17",
    "in_scope": true,
-   "score": 5.086394786834717
+   "score": 4.150177001953125
   },
   {
    "id": "ABS-18",
    "in_scope": true,
-   "score": 0.5730339288711548
+   "score": -0.6531742811203003
   },
   {
    "id": "ABS-19",
    "in_scope": true,
-   "score": 2.769256830215454
+   "score": 1.4175301790237427
   },
   {
    "id": "ABS-20",
    "in_scope": true,
-   "score": 3.056277275085449
+   "score": 1.7054466009140015
   }
  ]
 }

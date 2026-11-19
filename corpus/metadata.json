@@ -208,5 +208,324 @@
     "niveau_confiance": "non_verifie",
     "test_securite": true,
     "description": "DOCUMENT DE TEST : contient des tentatives d'injection de prompt. Ne doit jamais être suivi comme une instruction."
+  },
+  {
+    "document_id": "SAN-FW-004",
+    "fichier": "SAN-FW-004_SAN-LAB-2000_Mise_a_jour_micrologiciel.pdf",
+    "titre": "SAN-LAB 2000 - Mise à jour du micrologiciel",
+    "version": "1.1",
+    "date": "2026-06-20",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 2000"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Historique des versions du micrologiciel, prérequis et déroulé documentaire PROC-FW-01."
+  },
+  {
+    "document_id": "SAN-PSU-005",
+    "fichier": "SAN-PSU-005_SAN-LAB-2000_Alimentations.pdf",
+    "titre": "SAN-LAB 2000 - Alimentations PSU1 et PSU2",
+    "version": "1.0",
+    "date": "2026-07-02",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 2000"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Voyants des modules d'alimentation et préparation de leur remplacement."
+  },
+  {
+    "document_id": "SAN-MPIO-006",
+    "fichier": "SAN-MPIO-006_SAN-LAB_Guide_multipathing.pdf",
+    "titre": "Famille SAN-LAB - Guide du multipathing côté hôte",
+    "version": "1.0",
+    "date": "2026-05-18",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 2000",
+      "SAN-LAB 3000"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "États des chemins MPIO et diagnostic documentaire d'une perte de chemin (AL-01, E-321)."
+  },
+  {
+    "document_id": "SAN-CAP-007",
+    "fichier": "SAN-CAP-007_SAN-LAB-2000_Capacite_volumes.pdf",
+    "titre": "SAN-LAB 2000 - Gestion de la capacité des volumes",
+    "version": "1.0",
+    "date": "2026-08-05",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 2000"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Seuils de capacité (AL-04), volumes de référence et analyse de tendance."
+  },
+  {
+    "document_id": "SAN-FAN-013",
+    "fichier": "SAN-FAN-013_SAN-LAB-3000_Remplacement_ventilateur.pdf",
+    "titre": "SAN-LAB 3000 - Remplacement d'un module ventilateur",
+    "version": "1.0",
+    "date": "2026-09-10",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 3000"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Repérage des modules FAN-1 à FAN-4 et procédure de remplacement (AL-31, E-310)."
+  },
+  {
+    "document_id": "SAN-TEMP-014",
+    "fichier": "SAN-TEMP-014_SAN-LAB-3000_Alerte_temperature.pdf",
+    "titre": "SAN-LAB 3000 - Conduite à tenir en cas d'alerte température",
+    "version": "1.0",
+    "date": "2026-09-12",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 3000"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Seuils AL-32 / AL-33, vérifications de la salle et escalade."
+  },
+  {
+    "document_id": "SAN-PM-015",
+    "fichier": "SAN-PM-015_SAN-LAB_Maintenance_preventive.pdf",
+    "titre": "Famille SAN-LAB - Check-list de maintenance préventive",
+    "version": "1.0",
+    "date": "2026-04-01",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 2000",
+      "SAN-LAB 3000"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Périodicité des contrôles préventifs des baies SAN-LAB."
+  },
+  {
+    "document_id": "SAN-FAQ-016",
+    "fichier": "SAN-FAQ-016_SAN-LAB_Questions_frequentes.pdf",
+    "titre": "Famille SAN-LAB - Questions fréquentes",
+    "version": "1.0",
+    "date": "2026-10-01",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 2000",
+      "SAN-LAB 3000"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Réponses courtes aux questions les plus fréquentes des techniciens SAN."
+  },
+  {
+    "document_id": "SAN-SCAN-017",
+    "fichier": "SAN-SCAN-017_Fiche_reflexe_alerte_disque_SCAN.pdf",
+    "titre": "Fiche réflexe SAN - alerte disque (document scanné)",
+    "version": "1.0",
+    "date": "2025-02-10",
+    "famille": "SAN",
+    "modeles": [
+      "SAN-LAB 2000"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "scanne": true,
+    "description": "Ancienne fiche papier scannée (contenu accessible uniquement par OCR)."
+  },
+  {
+    "document_id": "UPS-INST-022",
+    "fichier": "UPS-INST-022_UPS-X500_Installation.pdf",
+    "titre": "UPS-X500 - Installation et mise en service",
+    "version": "1.0",
+    "date": "2025-10-20",
+    "famille": "UPS",
+    "modeles": [
+      "UPS-X500"
+    ],
+    "groupes_acces": [
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Conditions d'installation, charge initiale de la batterie et mise en service."
+  },
+  {
+    "document_id": "UPS-BYP-032",
+    "fichier": "UPS-BYP-032_UPS-X900_Bypass_maintenance.pdf",
+    "titre": "UPS-X900 - Bypass de maintenance",
+    "version": "1.0",
+    "date": "2026-03-15",
+    "famille": "UPS",
+    "modeles": [
+      "UPS-X900"
+    ],
+    "groupes_acces": [
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Rôle du bypass de maintenance (F-15) et conditions de son utilisation."
+  },
+  {
+    "document_id": "UPS-BAT-033",
+    "fichier": "UPS-BAT-033_UPS-X900_Module_batterie.pdf",
+    "titre": "UPS-X900 - Remplacement du module batterie BAT-X9",
+    "version": "1.0",
+    "date": "2026-03-20",
+    "famille": "UPS",
+    "modeles": [
+      "UPS-X900"
+    ],
+    "groupes_acces": [
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Paramètres du module BAT-X9 et procédure de remplacement sous bypass de maintenance."
+  },
+  {
+    "document_id": "UPS-GEN-034",
+    "fichier": "UPS-GEN-034_Onduleurs_Groupe_electrogene.pdf",
+    "titre": "Onduleurs - Fonctionnement avec groupe électrogène",
+    "version": "1.0",
+    "date": "2026-05-05",
+    "famille": "UPS",
+    "modeles": [
+      "UPS-X500",
+      "UPS-X900"
+    ],
+    "groupes_acces": [
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Tolérances de fréquence, alarme F-12 et essais mensuels du groupe électrogène."
+  },
+  {
+    "document_id": "UPS-PM-035",
+    "fichier": "UPS-PM-035_Onduleurs_Maintenance_preventive.pdf",
+    "titre": "Onduleurs - Check-list de maintenance préventive",
+    "version": "1.0",
+    "date": "2026-04-01",
+    "famille": "UPS",
+    "modeles": [
+      "UPS-X500",
+      "UPS-X900"
+    ],
+    "groupes_acces": [
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Périodicité des contrôles préventifs des onduleurs."
+  },
+  {
+    "document_id": "UPS-SEC-036",
+    "fichier": "UPS-SEC-036_Onduleurs_Securite_electrique.pdf",
+    "titre": "Onduleurs - Consignes de sécurité électrique",
+    "version": "1.0",
+    "date": "2026-02-01",
+    "famille": "UPS",
+    "modeles": [
+      "UPS-X500",
+      "UPS-X900"
+    ],
+    "groupes_acces": [
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Habilitations, équipements de protection et règles de base avant toute intervention."
+  },
+  {
+    "document_id": "UPS-FAQ-037",
+    "fichier": "UPS-FAQ-037_Onduleurs_Questions_frequentes.pdf",
+    "titre": "Onduleurs - Questions fréquentes",
+    "version": "1.0",
+    "date": "2026-10-01",
+    "famille": "UPS",
+    "modeles": [
+      "UPS-X500",
+      "UPS-X900"
+    ],
+    "groupes_acces": [
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Réponses courtes aux questions les plus fréquentes sur les onduleurs."
+  },
+  {
+    "document_id": "UPS-SCAN-038",
+    "fichier": "UPS-SCAN-038_Rapport_intervention_UPS-X500-01_2023_SCAN.pdf",
+    "titre": "Rapport d'intervention scanné - UPS-X500-01 (mars 2023)",
+    "version": "1.0",
+    "date": "2023-03-14",
+    "famille": "UPS",
+    "modeles": [
+      "UPS-X500"
+    ],
+    "groupes_acces": [
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "scanne": true,
+    "description": "Rapport papier numérisé du remplacement de batterie de 2023 (OCR) ; contient une annotation piégée."
+  },
+  {
+    "document_id": "GLO-ORG-040",
+    "fichier": "GLO-ORG-040_Organisation_maintenance_escalade.pdf",
+    "titre": "Organisation de la maintenance et règles d'escalade",
+    "version": "1.0",
+    "date": "2026-01-15",
+    "famille": "GLOBAL",
+    "modeles": [
+      "SAN-LAB 2000",
+      "SAN-LAB 3000",
+      "UPS-X500",
+      "UPS-X900"
+    ],
+    "groupes_acces": [
+      "tech_san",
+      "tech_ups",
+      "responsables"
+    ],
+    "niveau_confiance": "valide",
+    "description": "Rôles, délais d'escalade et circuit d'approbation des tickets."
   }
 ]

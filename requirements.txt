@@ -1,5 +1,5 @@
 # Versions testées sur le poste de développement (Python 3.13, Windows 11, CPU).
-# torch==2.15.0 est installé séparément (CPU ou CUDA selon la machine).
+# torch==2.15.0 et torchvision==0.29.2 sont installés séparément (CPU ou CUDA selon la machine).
 pymupdf==2.1
 pillow==13.0.0
 numpy==2.5.4
@@ -22,6 +22,9 @@ httpx==0.28.1
 streamlit==1.67.0
 mlflow-skinny==3.18.0
 pytest==9.2.0
+easyocr==1.7.2
+psycopg[binary]==3.3.9
+minio==7.2.20
 
 # Génération du corpus fictif (scripts/generate_corpus.py)
 reportlab==5.1.0

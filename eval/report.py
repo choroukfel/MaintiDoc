@@ -10,7 +10,8 @@ ROOT = Path(__file__).resolve().parent.parent
 RES = ROOT / 'eval' / 'results'
 CAT_LABEL = {'texte': 'Questions documentaires textuelles', 'image': 'Questions avec image ou schéma',
              'mcp': 'Consultation MCP', 'absent_contradictoire': 'Sources absentes / contradictoires',
-             'acces_validation': "Contrôle d'accès et validation humaine", 'injection': 'Injections de prompt'}
+             'acces_validation': "Contrôle d'accès et validation humaine", 'injection': 'Injections de prompt',
+             'corpus_etendu': 'Corpus étendu et OCR (complément)'}
 
 
 def pct(a, b):
@@ -96,11 +97,14 @@ def build_report():
     L = ['# MaintiDoc : rapport d\'évaluation', '',
          '*Généré automatiquement par `python eval/run_eval.py report` à partir de `eval/results/`.*', '',
          '## 1. Protocole', '',
-         '- **Jeu de test** : 150 scénarios (`eval/scenarios.json`) répartis selon la section 10 du sujet.',
+         f"- **Jeu de test** : {len(scen)} scénarios (`eval/scenarios.json`) : les 150 de la section 10 du sujet, plus "
+         "10 scénarios sur le corpus étendu (dont 2 accessibles uniquement par OCR et 1 injection dans un scan).",
+         '- **Corpus** : 30 documents fictifs (2 familles d\'équipements), dont 2 documents scannés sans couche texte.',
          '- **Matériel** : PC portable Intel Core i5-1145G7, 15 Go de RAM, **sans GPU**. Le modèle vision-langage '
          'Qwen2.5-VL 3B (quantifié, Ollama) tourne sur le CPU.',
          '- **Recherche** : embeddings `paraphrase-multilingual-MiniLM-L12-v2` (Qdrant embarqué), BM25, CLIP ViT-B/32, '
-         'fusion RRF, reranker `mmarco-mMiniLMv2-L12` (origine puis adapté).',
+         'fusion RRF, reranker `mmarco-mMiniLMv2-L12` (origine puis adapté). OCR local EasyOCR (pages scannées, '
+         'texte des figures, photos).',
          '- Chaque scénario repart d\'une base MCP identique ; un scénario est **réussi** si tous ses contrôles passent.', '']
     if retrieval:
         L += ['## 2. Recherche documentaire', '',
@@ -127,14 +131,29 @@ def build_report():
               '| MRR@10 (questions générées) | Validation | Test |', '|---|---|---|',
               f"| Reranker d'origine | {ft['mrr10_base']['val'][0]} | {ft['mrr10_base']['test'][0]} |",
               f"| Reranker adapté | {ft['mrr10_adapte']['val'][0]} | {ft['mrr10_adapte']['test'][0]} |", '',
-              'Les questions générées sont proches du format d\'entraînement : le gain réel se lit plutôt sur les '
-              'scénarios rédigés à la main (section 2, lignes « reranker origine » et « reranker adapté »).', '',
-              "**Conclusion** : l'adaptation améliore nettement le classement sur des questions du même format que "
+              'Les questions générées sont proches du format d\'entraînement : le gain réel se lit sur les scénarios '
+              'rédigés à la main.', '']
+        it1 = RES / 'iteration1_12docs'
+        if (it1 / 'finetuning.json').exists() and retrieval:
+            ft1 = json.loads((it1 / 'finetuning.json').read_text(encoding='utf-8'))
+            r1 = json.loads((it1 / 'retrieval.json').read_text(encoding='utf-8'))['configurations']
+            r2 = retrieval['configurations']
+            L += ['**Deux itérations de fine-tuning** :', '',
+                  '| Itération | Données d\'entraînement | MRR@10 questions générées (test) origine → adapté | '
+                  'MRR@10 scénarios rédigés : origine | MRR@10 scénarios rédigés : adapté |', '|---|---|---|---|---|',
+                  f"| v1 (corpus de 12 documents) | {sum(ft1['triplets'].values())} triplets, 3 gabarits fixes par ligne | "
+                  f"{ft1['mrr10_base']['test'][0]} → {ft1['mrr10_adapte']['test'][0]} | "
+                  f"{r1['hybride + reranker origine']['mrr@10']:.3f} | {r1['hybride + reranker adapté']['mrr@10']:.3f} |",
+                  f"| v2 (corpus de 30 documents) | {sum(ft['triplets'].values())} triplets, gabarits variés tirés au hasard | "
+                  f"{ft['mrr10_base']['test'][0]} → {ft['mrr10_adapte']['test'][0]} | "
+                  f"{r2['hybride + reranker origine']['mrr@10']:.3f} | {r2['hybride + reranker adapté']['mrr@10']:.3f} |",
+                  '']
+        L += ["**Conclusion** : l'adaptation améliore nettement le classement sur des questions du même format que "
               "l'entraînement, y compris sur des documents jamais vus, mais ce gain **ne se transfère pas** aux questions "
-              "rédigées à la main (MRR@10 équivalent, et inférieur sur les documents de test, n=18). Les questions "
-              "d'entraînement, générées par gabarits, sont trop uniformes. Le reranker d'origine reste donc utilisé "
-              "par défaut (`MAINTIDOC_RERANKER=base`). Piste : des questions d'entraînement plus variées (paraphrases "
-              'rédigées ou générées par un LLM, puis vérifiées).', '']
+              "rédigées à la main. La v2, aux gabarits plus variés, fait même moins bien que le modèle d'origine : des "
+              "questions synthétiques, même diversifiées, apprennent au modèle des formulations artificielles. Le reranker "
+              "d'origine reste donc utilisé par défaut (`MAINTIDOC_RERANKER=base`). Piste : constituer des questions "
+              "d'entraînement rédigées par des techniciens (ou générées par un LLM plus puissant puis relues).", '']
     L += ['## 4. Évaluation de bout en bout (vrai modèle)', '',
           f"**{summary['n_scenarios_executes']} / {summary['n_scenarios_total']} scénarios exécutés, réussite globale "
           f"{summary['reussite_globale']}.**", '', '| Catégorie | Exécutés | Réussis | Taux |', '|---|---|---|---|']
@@ -142,6 +161,17 @@ def build_report():
         v = summary['par_categorie'].get(c)
         if v:
             L.append(f"| {lab} | {v['n']} | {v['reussis']} | {v['taux']} |")
+    s1f = RES / 'iteration1_12docs' / 'summary.json'
+    if s1f.exists():
+        s1 = json.loads(s1f.read_text(encoding='utf-8'))
+        base150 = [r for r in runs if r['category'] != 'corpus_etendu']
+        p1 = {c: v['taux'] for c, v in s1['par_categorie'].items()}
+        L += ['', f"**Comparaison avec l'itération 1** (corpus de 12 documents, sans OCR) sur les 150 scénarios du sujet : "
+                  f"{s1['reussite_globale']} → {pct(sum(r['passed'] for r in base150), len(base150))} "
+                  f"({sum(r['passed'] for r in base150)} / {len(base150)}), alors que le corpus est 2,5 fois plus grand "
+                  f"(plus de passages concurrents). Par catégorie, itération 1 → 2 : "
+                  + ' ; '.join(f"{CAT_LABEL[c].lower()} {p1[c]} → {summary['par_categorie'][c]['taux']}"
+                               for c in p1 if c in summary['par_categorie']) + '.']
     c = summary['citations']
     L += ['', '### Indicateurs', '',
           f"- **Citations** : {c['citations']} citations dans {c['reponses_affirmatives']} réponses affirmatives ; validité "

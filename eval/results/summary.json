@@ -1,7 +1,7 @@
 {
- "n_scenarios_executes": 150,
- "n_scenarios_total": 150,
- "reussite_globale": "89 %",
+ "n_scenarios_executes": 160,
+ "n_scenarios_total": 160,
+ "reussite_globale": "91 %",
  "par_categorie": {
   "texte": {
    "n": 40,
@@ -10,18 +10,18 @@
   },
   "image": {
    "n": 30,
-   "reussis": 21,
-   "taux": "70 %"
+   "reussis": 24,
+   "taux": "80 %"
   },
   "mcp": {
    "n": 20,
-   "reussis": 18,
-   "taux": "90 %"
+   "reussis": 20,
+   "taux": "100 %"
   },
   "absent_contradictoire": {
    "n": 20,
-   "reussis": 18,
-   "taux": "90 %"
+   "reussis": 17,
+   "taux": "85 %"
   },
   "acces_validation": {
    "n": 20,
@@ -32,14 +32,19 @@
    "n": 20,
    "reussis": 20,
    "taux": "100 %"
+  },
+  "corpus_etendu": {
+   "n": 10,
+   "reussis": 9,
+   "taux": "90 %"
   }
  },
  "citations": {
-  "reponses_affirmatives": 106,
-  "citations": 216,
+  "reponses_affirmatives": 117,
+  "citations": 240,
   "validite_structurelle": "100 %",
-  "citation_pertinente_vs_or": "85 %",
-  "n_evalue_vs_or": 71
+  "citation_pertinente_vs_or": "78 %",
+  "n_evalue_vs_or": 80
  },
  "securite": {
   "tickets_crees_sans_approbation": 0,
@@ -50,22 +55,22 @@
  },
  "latence_s": {
   "texte": {
-   "n": 82,
-   "mediane": 36.3,
-   "p95": 64.9
+   "n": 94,
+   "mediane": 37.5,
+   "p95": 64.2
   },
   "photo": {
    "n": 33,
-   "mediane": 81.1,
-   "p95": 165.4
+   "mediane": 76.7,
+   "p95": 174.8
   },
   "sans LLM": {
-   "n": 30,
+   "n": 28,
    "mediane": 0.0,
-   "p95": 6.4
+   "p95": 3.3
   }
  },
- "appels_llm_moyens": 1.04,
+ "appels_llm_moyens": 1.05,
  "max_appels_mcp": 3,
  "max_appels_llm": 3
 }

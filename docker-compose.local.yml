@@ -1,0 +1,11 @@
+# Surcharge pour le poste de développement : réutilise les modèles déjà téléchargés sur l'hôte
+# (embeddings, CLIP, reranker, OCR) au lieu de les retélécharger dans le conteneur.
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+services:
+  api:
+    environment:
+      HF_HOME: /models/hf
+      EASYOCR_MODULE_PATH: /models/easyocr
+    volumes:
+      - ${USERPROFILE:-~}/.cache/huggingface:/models/hf
+      - ${USERPROFILE:-~}/.EasyOCR:/models/easyocr

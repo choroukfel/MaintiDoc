@@ -22,6 +22,7 @@ from reportlab.platypus import (Image, KeepTogether, PageBreak, Paragraph, Simpl
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import figures  # noqa: E402
 from corpus_content import DOCUMENTS  # noqa: E402
+from corpus_content_extra import EXTRA_DOCUMENTS  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 CORPUS = ROOT / 'corpus'
@@ -124,12 +125,46 @@ def build_pdf(meta: dict, out: Path):
     doc.build(flow, onFirstPage=cb, onLaterPages=cb)
 
 
+def scanify(src: Path, dst: Path, seed: int):
+    """Simule un document papier numérisé : pages rendues en images (sans couche texte), légèrement
+    inclinées, jaunies et bruitées. Leur contenu n'est accessible que par OCR."""
+    import io
+
+    import numpy as np
+    import pymupdf
+    from PIL import Image, ImageFilter
+    rng = np.random.default_rng(seed)
+    src_doc, out = pymupdf.open(src), pymupdf.open()
+    for page in src_doc:
+        pix = page.get_pixmap(dpi=150, colorspace=pymupdf.csGRAY)
+        im = Image.frombytes('L', (pix.width, pix.height), pix.samples)
+        im = im.rotate(float(rng.uniform(-1.2, 1.2)), resample=Image.BICUBIC, expand=False, fillcolor=255)
+        arr = np.asarray(im, dtype=np.float32)
+        arr = arr * 0.92 + rng.normal(0, 7, arr.shape) + 8
+        im = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.5))
+        rgb = Image.merge('RGB', (im, im.point(lambda v: v * 0.98), im.point(lambda v: v * 0.90)))  # papier jauni
+        buf = io.BytesIO()
+        rgb.save(buf, format='JPEG', quality=80)
+        new = out.new_page(width=page.rect.width, height=page.rect.height)
+        new.insert_image(new.rect, stream=buf.getvalue())
+    out.save(dst, garbage=3, deflate=True)
+    out.close(); src_doc.close()
+
+
 def main():
+    from reportlab import rl_config
+    rl_config.invariant = 1  # PDF reproductibles (pas de date ni d'identifiant aléatoire)
     CORPUS.mkdir(exist_ok=True)
     figures.build_all(FIG_DIR, PHOTO_DIR)
     metadata = [EXISTING]
-    for meta in DOCUMENTS:
-        build_pdf(meta, CORPUS / meta['fichier'])
+    for i, meta in enumerate(DOCUMENTS + EXTRA_DOCUMENTS):
+        if meta.get('scanne'):
+            tmp = FIG_DIR / f"_{meta['document_id']}_texte.pdf"
+            build_pdf(meta, tmp)
+            scanify(tmp, CORPUS / meta['fichier'], seed=i)
+            tmp.unlink()
+        else:
+            build_pdf(meta, CORPUS / meta['fichier'])
         metadata.append({k: v for k, v in meta.items() if k != 'blocs'})
         print('OK', meta['fichier'])
     (CORPUS / 'metadata.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding='utf-8')

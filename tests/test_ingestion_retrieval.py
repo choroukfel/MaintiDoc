@@ -30,6 +30,23 @@ def test_headers_not_indexed(retriever):
             assert '| Révision' not in e['content']
 
 
+def test_scanned_documents_read_by_ocr(retriever):
+    ocr_els = {k: e for k, e in retriever.elements.items() if e.get('ocr')}
+    assert {e['document_id'] for e in ocr_els.values()} == {'SAN-SCAN-017', 'UPS-SCAN-038'}
+    assert any('4521' in e['content'] for e in ocr_els.values())  # information présente uniquement dans le scan
+    hits = retriever.search("Quel est le poste de l'astreinte stockage ?", ['tech_san'], top_k=3)
+    assert hits[0].element['document_id'] == 'SAN-SCAN-017'
+
+
+def test_figure_text_read_by_ocr(retriever):
+    assert 'SURCHARGE' in retriever.elements['UPS-MAN-030/FIG-01']['content']
+
+
+def test_ocr_normalization():
+    from maintidoc.ocr import normalize
+    assert normalize('UPS-X9OO D1O ON BATT') == 'UPS-X900 D10 ON BATT'
+
+
 def test_tokenize_keeps_codes():
     toks = tokenize('Que signifie le code F-05 sur l\'UPS-X900 ?')
     assert 'f-05' in toks and 'ups-x900' in toks and 'le' not in toks

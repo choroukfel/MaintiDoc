@@ -256,6 +256,59 @@ def flowchart(title: str, steps: list[tuple[str, str]]):
     return c
 
 
+def psu_module():
+    c = Canvas(900, 460, bg='white')
+    c.d.rounded_rectangle((120, 90, 620, 330), 14, fill='#3a3f46', outline='#111', width=3)
+    for k in range(10):
+        c.d.ellipse((160 + k * 34, 140, 184 + k * 34, 164), fill='#22262b')
+        c.d.ellipse((160 + k * 34, 190, 184 + k * 34, 214), fill='#22262b')
+    c.d.rectangle((480, 240, 590, 300), fill='#111', outline='#888')
+    c.text((535, 270), 'AC IN', size=16, anchor='mm')
+    c.led(200, 280, 'vert', r=12)
+    c.d.rounded_rectangle((560, 110, 600, 220), 8, fill='#888', outline='#111')
+    c.text((370, 60), 'Module PSU-LAB-650 (vue arrière)', size=22, fill='#111', bold=True, anchor='mm')
+    for (x, y), (tx, ty), s in [((200, 280), (650, 330), 'Voyant d\'état'), ((535, 270), (650, 270), 'Entrée secteur'),
+                                ((580, 165), (650, 160), 'Poignée d\'extraction')]:
+        c.d.line((x, y, tx - 10, ty + 10), fill='#c00', width=2)
+        c.text((tx - 5, ty), s, size=18, fill='#111')
+    return c
+
+
+def battery_x9():
+    c = Canvas(1000, 480, bg='white')
+    c.d.rounded_rectangle((80, 120, 640, 400), 12, fill='#2a2d33', outline='#111', width=3)
+    c.d.rectangle((110, 160, 610, 370), fill='#4b5563', outline='#ddd', width=2)
+    for i in range(8):
+        for j in range(2):
+            c.d.rectangle((125 + i * 60, 175 + j * 95, 175 + i * 60, 255 + j * 95), fill='#374151', outline='#9ca3af')
+    c.d.rounded_rectangle((300, 380, 420, 400), 4, fill='#c9a227')
+    c.text((360, 80), 'Tiroir BAT-X9 (UPS-X900)', size=24, fill='#111', bold=True, anchor='mm')
+    for (x, y), (tx, ty), s in [((360, 390), (680, 380), 'Poignée (manipulation à deux)'),
+                                ((600, 200), (680, 200), '16 blocs 12 V 7 Ah'), ((620, 300), (680, 290), 'Verrou du tiroir')]:
+        c.d.line((x, y, tx - 10, ty + 10), fill='#c00', width=2)
+        c.text((tx - 5, ty), s, size=18, fill='#111')
+    return c
+
+
+EXTRA_FLOWS = {
+    'flow_fw': ('Mise à jour du micrologiciel SAN-LAB 2000', [
+        ('Prérequis TAB-02 vérifiés + ticket approuvé', '#e8eef7'), ('Mise à jour du contrôleur B', '#e8eef7'),
+        ('SYS vert fixe et chemins FC rétablis ?', '#fff3cd'), ('Mise à jour du contrôleur A', '#e8eef7'),
+        ('Contrôle final et documentation', '#d4edda')]),
+    'flow_mpio': ('Perte de chemin : diagnostic documentaire', [
+        ('Identifier le volume et l\'hôte affectés', '#e8eef7'), ('Compter les chemins restants par fabric', '#e8eef7'),
+        ('Un seul chemin restant ?', '#fff3cd'), ('Oui : escalade (redondance perdue)', '#f8d7da'),
+        ('Non : brouillon de ticket + approbation', '#d4edda')]),
+    'flow_fan': ('Remplacement d\'un ventilateur SAN-LAB 3000', [
+        ('Identifier FAN-x (E-310 / AL-31)', '#e8eef7'), ('Ticket approuvé par le responsable', '#e8eef7'),
+        ('Module neuf préparé', '#e8eef7'), ('Échange en moins de 2 minutes', '#fff3cd'),
+        ('Voyant FAN éteint, E-310 disparu', '#d4edda')]),
+    'flow_temp': ('Alerte température SAN-LAB 3000', [
+        ('Lire le voyant TEMP et le code', '#e8eef7'), ('Orange (AL-32) : vérifier la salle', '#fff3cd'),
+        ('Rouge (AL-33) : escalade immédiate', '#f8d7da'), ('Pas de baisse en 30 min : escalade', '#f8d7da')]),
+}
+
+
 # ---------------------------------------------------------------- Photos simulées
 def photoize(panel: Image.Image, angle: float, blur: float, seed: int, brightness=0.85,
              crop: tuple[int, int, int, int] | None = None, noise=10.0, shear=0.06) -> Image.Image:
@@ -308,6 +361,10 @@ def build_all(fig_dir: Path, photo_dir: Path) -> None:
             ('Oui : escalade immédiate, ne pas réarmer', '#f8d7da'),
             ('Non : brouillon de ticket + approbation humaine', '#d4edda')]),
     }
+    figs['psu_module'] = psu_module()
+    figs['battery_x9'] = battery_x9()
+    for key, (title, steps) in EXTRA_FLOWS.items():
+        figs[key] = flowchart(title, steps)
     for name, c in figs.items():
         c.finish(glow=0.35).save(fig_dir / f'{name}.png')
 

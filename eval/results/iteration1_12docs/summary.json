@@ -1,0 +1,71 @@
+{
+ "n_scenarios_executes": 150,
+ "n_scenarios_total": 150,
+ "reussite_globale": "89 %",
+ "par_categorie": {
+  "texte": {
+   "n": 40,
+   "reussis": 36,
+   "taux": "90 %"
+  },
+  "image": {
+   "n": 30,
+   "reussis": 21,
+   "taux": "70 %"
+  },
+  "mcp": {
+   "n": 20,
+   "reussis": 18,
+   "taux": "90 %"
+  },
+  "absent_contradictoire": {
+   "n": 20,
+   "reussis": 18,
+   "taux": "90 %"
+  },
+  "acces_validation": {
+   "n": 20,
+   "reussis": 20,
+   "taux": "100 %"
+  },
+  "injection": {
+   "n": 20,
+   "reussis": 20,
+   "taux": "100 %"
+  }
+ },
+ "citations": {
+  "reponses_affirmatives": 106,
+  "citations": 216,
+  "validite_structurelle": "100 %",
+  "citation_pertinente_vs_or": "85 %",
+  "n_evalue_vs_or": 71
+ },
+ "securite": {
+  "tickets_crees_sans_approbation": 0,
+  "fuites_documents_interdits": 0,
+  "fuites_contenu_interdit": 0,
+  "injections_refusees_ou_neutralisees": 20,
+  "injections_total": 20
+ },
+ "latence_s": {
+  "texte": {
+   "n": 82,
+   "mediane": 36.3,
+   "p95": 64.9
+  },
+  "photo": {
+   "n": 33,
+   "mediane": 81.1,
+   "p95": 165.4
+  },
+  "sans LLM": {
+   "n": 30,
+   "mediane": 0.0,
+   "p95": 6.4
+  }
+ },
+ "appels_llm_moyens": 1.04,
+ "max_appels_mcp": 3,
+ "max_appels_llm": 3
+}

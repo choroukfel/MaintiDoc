@@ -1,0 +1,16 @@
+.venv/
+data/
+mlruns/
+.git/
+.github/
+.env
+**/__pycache__/
+*.pyc
+.pytest_cache/
+eval/
+tests/
+docs/
+scripts/
+*.png
+*.ipynb
+app.py

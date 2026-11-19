@@ -14,7 +14,8 @@ from pathlib import Path
 import pymupdf
 from PIL import Image
 
-from . import config
+from . import config, ocr
+from .storage import get_storage
 
 HEADER_FOOTER = re.compile(
     r'(\|\s*R[ée]vision|^Page \d+$|^Diffusion :|document p[ée]dagogique fictif|Manuel pedagogique fictif)', re.I)
@@ -24,15 +25,14 @@ CHUNK_CHARS = 700
 
 
 def load_metadata() -> dict[str, dict]:
-    meta = json.loads((config.CORPUS_DIR / 'metadata.json').read_text(encoding='utf-8'))
+    meta = json.loads(get_storage().read('metadata.json').decode('utf-8'))
     return {m['document_id']: m for m in meta}
 
 
 def corpus_hash() -> str:
-    h = hashlib.sha256()
-    for p in sorted(config.CORPUS_DIR.glob('*')):
-        if p.is_file():
-            h.update(p.name.encode()); h.update(p.read_bytes())
+    st, h = get_storage(), hashlib.sha256()
+    for name in st.list():
+        h.update(name.encode()); h.update(st.read(name))
     return h.hexdigest()[:16]
 
 
@@ -66,6 +66,18 @@ def _caption_near(blocks, rect: pymupdf.Rect, pattern: re.Pattern, above: bool) 
     return pattern.match(best[1]).group(1), best[1]
 
 
+def is_scanned(page) -> bool:
+    """Page sans couche texte exploitable, couverte en grande partie par une image (document numérisé)."""
+    if len(page.get_text('text').strip()) >= 40:
+        return False
+    area = page.rect.get_area()
+    for info in page.get_images(full=True):
+        for r in page.get_image_rects(info[0]):
+            if r.get_area() > 0.5 * area:
+                return True
+    return False
+
+
 def _base(meta: dict, page: int) -> dict:
     return {'document_id': meta['document_id'], 'titre': meta['titre'], 'version': meta['version'], 'page': page,
             'modeles': meta['modeles'], 'famille': meta['famille'], 'groupes_acces': meta['groupes_acces'],
@@ -74,12 +86,30 @@ def _base(meta: dict, page: int) -> dict:
 
 def parse_document(meta: dict, image_dir: Path) -> tuple[list[dict], list[dict]]:
     """Retourne (elements, units). Un élément est ce qui est cité ; une unité est ce qui est indexé."""
-    pdf = pymupdf.open(config.CORPUS_DIR / meta['fichier'])
+    pdf = pymupdf.open(stream=get_storage().read(meta['fichier']), filetype='pdf')
     elements, units = [], []
     doc_id, title = meta['document_id'], meta['titre']
     for pno, page in enumerate(pdf, 1):
         blocks = _blocks(page)
         excluded: list[pymupdf.Rect] = []
+        # ---------------------------------------------------------- page scannée : OCR de la page entière
+        if is_scanned(page):
+            text = ocr.read_page(page)
+            lines = [l for l in text.split('\n') if l.strip() and not HEADER_FOOTER.search(l)]
+            chunks, cur = [], ''
+            for p in lines:
+                if cur and len(cur) + len(p) > CHUNK_CHARS:
+                    chunks.append(cur); cur = ''
+                cur = f'{cur} {_clean(p)}'.strip()
+            if cur:
+                chunks.append(cur)
+            for k, chunk in enumerate(chunks, 1):
+                ref = f'OCR-P{pno:02d}-{k}'
+                elements.append({**_base(meta, pno), 'element_id': ref, 'type': 'texte', 'ocr': True,
+                                 'content': f'[Texte obtenu par OCR d\'un document scanné] {chunk}'})
+                units.append({'unit_id': f'{doc_id}/{ref}', 'document_id': doc_id, 'element_id': ref,
+                              'text': f'[{title}] {chunk}'})
+            continue
         # ---------------------------------------------------------- tableaux
         try:
             tables = page.find_tables().tables
@@ -127,10 +157,13 @@ def parse_document(meta: dict, image_dir: Path) -> tuple[list[dict], list[dict]]
             caption = caption or f'Figure page {pno}'
             img_path = image_dir / f'{doc_id}_{ref}.png'
             im.save(img_path)
+            fig_text = ' '.join(ocr.read_image(im).split('\n'))[:400]  # étiquettes lues sur le schéma (OCR)
+            ocr_part = f' Texte lu sur la figure (OCR) : {fig_text}' if fig_text else ''
             elements.append({**_base(meta, pno), 'element_id': ref, 'type': 'figure', 'caption': caption,
-                             'content': caption + ' (image originale disponible)', 'image_path': str(img_path)})
+                             'content': caption + ' (image originale disponible).' + ocr_part,
+                             'image_path': str(img_path)})
             units.append({'unit_id': f'{doc_id}/{ref}', 'document_id': doc_id, 'element_id': ref,
-                          'text': f'[{title}] {caption}'})
+                          'text': f'[{title}] {caption}{ocr_part}'})
         # ---------------------------------------------------------- texte (hors tableaux et légendes)
         paras = []
         for r, text in blocks:

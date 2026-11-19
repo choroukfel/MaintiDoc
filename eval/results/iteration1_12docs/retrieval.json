@@ -1,0 +1,480 @@
+{
+ "configurations": {
+  "dense": {
+   "n": 73,
+   "recall@5": 0.7078,
+   "ndcg@5": 0.4619,
+   "mrr@10": 0.408,
+   "n_docs_test": 18,
+   "recall@5 (docs test)": 0.6944,
+   "ndcg@5 (docs test)": 0.5215,
+   "mrr@10 (docs test)": 0.4745,
+   "par_categorie": {
+    "absent_contradictoire": {
+     "recall@5": 0.875,
+     "ndcg@5": 0.6713,
+     "mrr@10": 0.6458
+    },
+    "acces_validation": {
+     "recall@5": 1.0,
+     "ndcg@5": 1.0,
+     "mrr@10": 1.0
+    },
+    "image": {
+     "recall@5": 0.5952,
+     "ndcg@5": 0.2915,
+     "mrr@10": 0.2195
+    },
+    "texte": {
+     "recall@5": 0.7625,
+     "ndcg@5": 0.5468,
+     "mrr@10": 0.5012
+    }
+   }
+  },
+  "bm25": {
+   "n": 73,
+   "recall@5": 0.7123,
+   "ndcg@5": 0.6258,
+   "mrr@10": 0.638,
+   "n_docs_test": 18,
+   "recall@5 (docs test)": 0.6944,
+   "ndcg@5 (docs test)": 0.7007,
+   "mrr@10 (docs test)": 0.7315,
+   "par_categorie": {
+    "absent_contradictoire": {
+     "recall@5": 0.875,
+     "ndcg@5": 0.6981,
+     "mrr@10": 0.6875
+    },
+    "acces_validation": {
+     "recall@5": 1.0,
+     "ndcg@5": 1.0,
+     "mrr@10": 1.0
+    },
+    "image": {
+     "recall@5": 0.2857,
+     "ndcg@5": 0.2195,
+     "mrr@10": 0.2961
+    },
+    "texte": {
+     "recall@5": 0.9875,
+     "ndcg@5": 0.8936,
+     "mrr@10": 0.8633
+    }
+   }
+  },
+  "hybride RRF": {
+   "n": 73,
+   "recall@5": 0.7671,
+   "ndcg@5": 0.5726,
+   "mrr@10": 0.5377,
+   "n_docs_test": 18,
+   "recall@5 (docs test)": 0.7222,
+   "ndcg@5 (docs test)": 0.6003,
+   "mrr@10 (docs test)": 0.5694,
+   "par_categorie": {
+    "absent_contradictoire": {
+     "recall@5": 0.875,
+     "ndcg@5": 0.7653,
+     "mrr@10": 0.8125
+    },
+    "acces_validation": {
+     "recall@5": 1.0,
+     "ndcg@5": 1.0,
+     "mrr@10": 1.0
+    },
+    "image": {
+     "recall@5": 0.5714,
+     "ndcg@5": 0.3397,
+     "mrr@10": 0.3025
+    },
+    "texte": {
+     "recall@5": 0.8875,
+     "ndcg@5": 0.7057,
+     "mrr@10": 0.6633
+    }
+   }
+  },
+  "hybride + reranker origine": {
+   "n": 73,
+   "recall@5": 0.7922,
+   "ndcg@5": 0.7061,
+   "mrr@10": 0.7185,
+   "n_docs_test": 18,
+   "recall@5 (docs test)": 0.6944,
+   "ndcg@5 (docs test)": 0.5805,
+   "mrr@10 (docs test)": 0.5565,
+   "par_categorie": {
+    "absent_contradictoire": {
+     "recall@5": 1.0,
+     "ndcg@5": 0.8811,
+     "mrr@10": 1.0
+    },
+    "acces_validation": {
+     "recall@5": 1.0,
+     "ndcg@5": 1.0,
+     "mrr@10": 1.0
+    },
+    "image": {
+     "recall@5": 0.4583,
+     "ndcg@5": 0.3932,
+     "mrr@10": 0.4595
+    },
+    "texte": {
+     "recall@5": 1.0,
+     "ndcg@5": 0.9002,
+     "mrr@10": 0.8646
+    }
+   }
+  },
+  "hybride + reranker adapté": {
+   "n": 73,
+   "recall@5": 0.7717,
+   "ndcg@5": 0.6993,
+   "mrr@10": 0.7165,
+   "n_docs_test": 18,
+   "recall@5 (docs test)": 0.6111,
+   "ndcg@5 (docs test)": 0.4829,
+   "mrr@10 (docs test)": 0.4663,
+   "par_categorie": {
+    "absent_contradictoire": {
+     "recall@5": 1.0,
+     "ndcg@5": 0.8552,
+     "mrr@10": 0.8125
+    },
+    "acces_validation": {
+     "recall@5": 1.0,
+     "ndcg@5": 1.0,
+     "mrr@10": 1.0
+    },
+    "image": {
+     "recall@5": 0.4583,
+     "ndcg@5": 0.384,
+     "mrr@10": 0.4454
+    },
+    "texte": {
+     "recall@5": 0.9625,
+     "ndcg@5": 0.8969,
+     "mrr@10": 0.8896
+    }
+   }
+  }
+ },
+ "texte_vs_multimodal": {
+  "texte seul": {
+   "n": 28,
+   "recall@5": 0.3929,
+   "ndcg@5": 0.2664,
+   "mrr@10": 0.323
+  },
+  "multimodal (photo)": {
+   "n": 28,
+   "recall@5": 0.4583,
+   "ndcg@5": 0.384,
+   "mrr@10": 0.4454
+  }
+ },
+ "scores_abstention": [
+  {
+   "id": "TEX-01",
+   "in_scope": true,
+   "score": 6.26714563369751
+  },
+  {
+   "id": "TEX-02",
+   "in_scope": true,
+   "score": 9.416169166564941
+  },
+  {
+   "id": "TEX-03",
+   "in_scope": true,
+   "score": 5.872162342071533
+  },
+  {
+   "id": "TEX-04",
+   "in_scope": true,
+   "score": 3.124525785446167
+  },
+  {
+   "id": "TEX-05",
+   "in_scope": true,
+   "score": 4.26884126663208
+  },
+  {
+   "id": "TEX-06",
+   "in_scope": true,
+   "score": 4.015209674835205
+  },
+  {
+   "id": "TEX-07",
+   "in_scope": true,
+   "score": 2.9817566871643066
+  },
+  {
+   "id": "TEX-08",
+   "in_scope": true,
+   "score": 6.2523274421691895
+  },
+  {
+   "id": "TEX-09",
+   "in_scope": true,
+   "score": -1.155663013458252
+  },
+  {
+   "id": "TEX-10",
+   "in_scope": true,
+   "score": -1.9574276208877563
+  },
+  {
+   "id": "TEX-11",
+   "in_scope": true,
+   "score": 9.620818138122559
+  },
+  {
+   "id": "TEX-12",
+   "in_scope": true,
+   "score": 4.543004989624023
+  },
+  {
+   "id": "TEX-13",
+   "in_scope": true,
+   "score": -9.373559951782227
+  },
+  {
+   "id": "TEX-14",
+   "in_scope": true,
+   "score": 6.720446586608887
+  },
+  {
+   "id": "TEX-15",
+   "in_scope": true,
+   "score": 5.305018901824951
+  },
+  {
+   "id": "TEX-16",
+   "in_scope": true,
+   "score": 2.6007080078125
+  },
+  {
+   "id": "TEX-17",
+   "in_scope": true,
+   "score": 5.584595203399658
+  },
+  {
+   "id": "TEX-18",
+   "in_scope": true,
+   "score": 0.7834264039993286
+  },
+  {
+   "id": "TEX-19",
+   "in_scope": true,
+   "score": -1.4253835678100586
+  },
+  {
+   "id": "TEX-20",
+   "in_scope": true,
+   "score": 4.950967311859131
+  },
+  {
+   "id": "TEX-21",
+   "in_scope": true,
+   "score": 1.1132605075836182
+  },
+  {
+   "id": "TEX-22",
+   "in_scope": true,
+   "score": -8.689469337463379
+  },
+  {
+   "id": "TEX-23",
+   "in_scope": true,
+   "score": 2.4918437004089355
+  },
+  {
+   "id": "TEX-24",
+   "in_scope": true,
+   "score": 4.705564498901367
+  },
+  {
+   "id": "TEX-25",
+   "in_scope": true,
+   "score": 5.041867256164551
+  },
+  {
+   "id": "TEX-26",
+   "in_scope": true,
+   "score": 2.3348498344421387
+  },
+  {
+   "id": "TEX-27",
+   "in_scope": true,
+   "score": 8.319023132324219
+  },
+  {
+   "id": "TEX-28",
+   "in_scope": true,
+   "score": 2.603841781616211
+  },
+  {
+   "id": "TEX-29",
+   "in_scope": true,
+   "score": -3.988586902618408
+  },
+  {
+   "id": "TEX-30",
+   "in_scope": true,
+   "score": 1.2280504703521729
+  },
+  {
+   "id": "TEX-31",
+   "in_scope": true,
+   "score": -0.7976346611976624
+  },
+  {
+   "id": "TEX-32",
+   "in_scope": true,
+   "score": 5.926446437835693
+  },
+  {
+   "id": "TEX-33",
+   "in_scope": true,
+   "score": -2.9154677391052246
+  },
+  {
+   "id": "TEX-34",
+   "in_scope": true,
+   "score": -9.038880348205566
+  },
+  {
+   "id": "TEX-35",
+   "in_scope": true,
+   "score": 5.424647331237793
+  },
+  {
+   "id": "TEX-36",
+   "in_scope": true,
+   "score": 8.035435676574707
+  },
+  {
+   "id": "TEX-37",
+   "in_scope": true,
+   "score": 0.10339266806840897
+  },
+  {
+   "id": "TEX-38",
+   "in_scope": true,
+   "score": -0.6009082198143005
+  },
+  {
+   "id": "TEX-39",
+   "in_scope": true,
+   "score": -0.9632587432861328
+  },
+  {
+   "id": "TEX-40",
+   "in_scope": true,
+   "score": 4.6636128425598145
+  },
+  {
+   "id": "ABS-01",
+   "in_scope": false,
+   "score": -6.232640743255615
+  },
+  {
+   "id": "ABS-02",
+   "in_scope": false,
+   "score": -4.581430912017822
+  },
+  {
+   "id": "ABS-03",
+   "in_scope": false,
+   "score": -7.84758996963501
+  },
+  {
+   "id": "ABS-04",
+   "in_scope": false,
+   "score": 3.4977011680603027
+  },
+  {
+   "id": "ABS-05",
+   "in_scope": false,
+   "score": -6.767600059509277
+  },
+  {
+   "id": "ABS-06",
+   "in_scope": false,
+   "score": -4.172031879425049
+  },
+  {
+   "id": "ABS-07",
+   "in_scope": false,
+   "score": -4.85823392868042
+  },
+  {
+   "id": "ABS-08",
+   "in_scope": false,
+   "score": -3.8416929244995117
+  },
+  {
+   "id": "ABS-09",
+   "in_scope": false,
+   "score": -2.6164321899414062
+  },
+  {
+   "id": "ABS-10",
+   "in_scope": false,
+   "score": -8.845254898071289
+  },
+  {
+   "id": "ABS-11",
+   "in_scope": false,
+   "score": -7.471833229064941
+  },
+  {
+   "id": "ABS-12",
+   "in_scope": false,
+   "score": -7.591019153594971
+  },
+  {
+   "id": "ABS-13",
+   "in_scope": true,
+   "score": 1.5423274040222168
+  },
+  {
+   "id": "ABS-14",
+   "in_scope": true,
+   "score": 3.5850558280944824
+  },
+  {
+   "id": "ABS-15",
+   "in_scope": true,
+   "score": -7.635080337524414
+  },
+  {
+   "id": "ABS-16",
+   "in_scope": true,
+   "score": 1.8056316375732422
+  },
+  {
+   "id": "ABS-17",
+   "in_scope": true,
+   "score": 5.086394786834717
+  },
+  {
+   "id": "ABS-18",
+   "in_scope": true,
+   "score": 0.5730339288711548
+  },
+  {
+   "id": "ABS-19",
+   "in_scope": true,
+   "score": 2.769256830215454
+  },
+  {
+   "id": "ABS-20",
+   "in_scope": true,
+   "score": 3.056277275085449
+  }
+ ]
+}
