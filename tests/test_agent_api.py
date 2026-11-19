@@ -14,7 +14,7 @@ def test_nominal_answer_with_valid_citation(agent_factory):
     assert out['model'] == 'UPS-X900'
     keys = {f"{e['document_id']}/{e['element_id']}" for e in out['evidence']}
     assert all(f"{c['document_id']}/{c['element_id']}" in keys for c in r['citations'])
-    assert out['mcp_calls'] == 0 and out['llm_calls'] == 1
+    assert out['mcp_calls'] == 0 and out['llm_calls'] == 1  # juge LLM désactivé par défaut
 
 
 def test_risky_request_refused_without_llm(agent_factory):
@@ -107,6 +107,68 @@ def test_injection_written_on_photo_neutralized(agent_factory):
     assert out['flags'].get('injection_image')
     assert 'SANS APPROBATION' not in (out['visual'] or {}).get('ocr_text', '').upper()
     assert out['ticket'] is None and out['mcp_calls'] == 0
+
+
+def test_safety_rule_joined_for_physical_action(agent_factory, retriever):
+    out = agent_factory().ask('u-tech-a', 'Peut-on retirer deux disques en même temps sur le SAN-LAB 2000 ?')
+    safety_keys = [f"{e['document_id']}/{e['element_id']}" for e in out['evidence'] if e['element_id'].startswith('SEC-')]
+    assert len(safety_keys) == 1  # une seule consigne : celle retrouvée, sans ajout redondant
+    assert 'deux disques' in retriever.elements[safety_keys[0]]['content']
+
+
+def test_safety_rules_are_separate_elements(retriever):
+    sec = [e for e in retriever.elements.values() if e.get('securite')]
+    assert len(sec) >= 10 and all(e['element_id'].startswith('SEC-') for e in sec)
+    assert any('ne jamais retirer deux disques' in e['content'] for e in sec)
+
+
+def test_answer_allowing_prohibited_action_is_blocked(agent_factory):
+    """Garde-fou déterministe : la réponse autorise ce qu'une consigne de sécurité interdit (cas TEX-10)."""
+    llm = FakeLLM(answer={'status': 'answered', 'citations': ['E1'],
+                          'answer': 'Oui, vous pouvez retirer deux disques en même temps sur le SAN-LAB 2000.'})
+    out = agent_factory(llm).ask('u-tech-a', 'Peut-on retirer deux disques en même temps sur le SAN-LAB 2000 ?')
+    r = out['result']
+    assert r['status'] == 'needs_clarification' and 'Oui, vous pouvez' not in r['answer']
+    assert 'ne jamais retirer deux disques' in r['answer'] and r['citations']
+    assert 'evidence_check_v2' not in llm.calls  # bloqué sans appel au modèle
+
+
+def test_correct_refusal_is_not_blocked(agent_factory):
+    llm = FakeLLM(answer={'status': 'answered', 'citations': ['E1'],
+                          'answer': 'Non : il ne faut jamais retirer deux disques simultanément.'})
+    out = agent_factory(llm).ask('u-tech-a', 'Peut-on retirer deux disques en même temps sur le SAN-LAB 2000 ?')
+    assert out['result']['status'] == 'answered'
+
+
+def test_llm_judge_blocks_contradiction_when_enabled(agent_factory, monkeypatch):
+    monkeypatch.setattr(config, 'FAITHFULNESS_CHECK', True)
+    llm = FakeLLM(faithfulness='contredite')
+    out = agent_factory(llm).ask('u-tech-b', "Que signifie F-05 sur l'UPS-X900 ?")
+    r = out['result']
+    assert r['status'] == 'needs_clarification' and any('contredite' in u for u in r['uncertainties'])
+    assert 'evidence_check_v2' in llm.calls
+
+
+def test_llm_judge_unsupported_part_adds_warning_only(agent_factory, monkeypatch):
+    monkeypatch.setattr(config, 'FAITHFULNESS_CHECK', True)
+    out = agent_factory(FakeLLM(faithfulness='non_trouvee')).ask('u-tech-b', "Que signifie F-05 sur l'UPS-X900 ?")
+    assert out['result']['status'] == 'answered'
+    assert any('pas été retrouvée' in u for u in out['result']['uncertainties'])
+
+
+def test_llm_judge_disabled_by_default(agent_factory):
+    llm = FakeLLM(faithfulness='contredite')
+    out = agent_factory(llm).ask('u-tech-b', "Que signifie F-05 sur l'UPS-X900 ?")
+    assert out['result']['status'] == 'answered' and 'evidence_check_v2' not in llm.calls
+
+
+def test_ticket_requires_alarm_code(agent_factory):
+    """Sans code d'alarme, pas de brouillon : l'agent demande le code et rappelle les tickets ouverts."""
+    out = agent_factory().ask('u-tech-a', 'Le voyant orange est allumé sur SAN-LAB-2000-01, consulte les dernières '
+                                          'interventions et prépare un ticket si nécessaire.')
+    r = out['result']
+    assert out['ticket_draft'] is None and not out['awaiting_approval']
+    assert "code d'alarme" in (r['clarification_question'] or '') and 'TCK-2026-0141' in r['clarification_question']
 
 
 def test_budget_enforced(agent_factory, monkeypatch):

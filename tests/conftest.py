@@ -9,7 +9,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from maintidoc.schemas import LLMAnswer, LLMTicket, VisualAnalysis  # noqa: E402
+from maintidoc.schemas import FaithfulnessCheck, LLMAnswer, LLMTicket, VisualAnalysis  # noqa: E402
 from mcp_server.store import AccessDenied, MaintenanceStore  # noqa: E402
 
 
@@ -17,10 +17,12 @@ class FakeLLM:
     """LLM déterministe pour les tests : cite E1 et recopie le début de la preuve."""
     model = 'fake-llm'
 
-    def __init__(self, visual: dict | None = None, answer: dict | None = None, fail: bool = False):
+    def __init__(self, visual: dict | None = None, answer: dict | None = None, fail: bool = False,
+                 faithfulness: str = 'soutenue'):
         self.visual = visual or {'readable': True, 'equipment_model': None, 'screen_text': None, 'lit_indicators': []}
         self.answer = answer
         self.fail = fail
+        self.faithfulness = faithfulness
         self.calls: list[str] = []
 
     def structured(self, prompt, variables, schema, images=None, num_predict=None):
@@ -35,6 +37,8 @@ class FakeLLM:
             first = variables['evidence'].split('\n', 2)
             snippet = first[1][:200] if len(first) > 1 else ''
             return LLMAnswer(status='answered', answer=f'Selon la documentation : {snippet}', citations=['E1']), {}
+        if schema is FaithfulnessCheck:
+            return FaithfulnessCheck(verdict=self.faithfulness, raison='verdict simulé'), {}
         if schema is LLMTicket:
             return LLMTicket(title='Ventilateur FAN-3 dégradé (AL-31)', description='Constat AL-31 sur le module '
                              'FAN-3, voir SAN-MAN-010 TAB-02.', priority='moyenne'), {}

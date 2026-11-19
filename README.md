@@ -18,7 +18,7 @@ Streamlit (ui/app.py) ──HTTP──> FastAPI (api/main.py) : JWT, rôles, acc
                                    │
                          Workflow LangGraph (maintidoc/agent.py)
  check_access → analyze (texte + photo) → retrieve → [mcp_lookup] → generate → verify
-            → [draft_ticket → human_approval (interrupt) → create_ticket] → finalize
+   → check_faithfulness → [draft_ticket → human_approval (interrupt) → create_ticket] → finalize
       │                 │                      │                     │
  security.py     retrieval.py            llm.py (Ollama)       mcp_client.py ──stdio──> mcp_server/server.py
  (injections,    Qdrant + BM25 + CLIP,   Qwen2.5-VL, JSON      get_equipment_history / get_open_tickets /
@@ -106,7 +106,7 @@ seul habilité à approuver un ticket et à lire SAN-CAB-012), `u-stagiaire` (le
 ## Tests et évaluation
 
 ```powershell
-pytest                                   # 65 tests automatisés (LLM simulé, MCP réel en stdio, OCR réel)
+pytest                                   # 73 tests automatisés (LLM simulé, MCP réel en stdio, OCR réel)
 python eval/finetune_reranker.py         # fine-tuning du reranker (CPU, environ 30 min)
 python eval/run_eval.py retrieval        # Recall@5, nDCG@5, MRR@10 (5 configurations)
 python eval/run_eval.py e2e              # 160 scénarios avec le vrai modèle (plusieurs heures sur CPU)
@@ -134,8 +134,7 @@ Mesurés sur un PC portable sans GPU (i5, 15 Go de RAM), avec Qwen2.5-VL 3B, cor
 - **Recherche** : le reranker fait passer le MRR@10 de 0,55 (hybride) à 0,75. Le reranker fine-tuné progresse sur ses
   propres questions de test (0,66 → 0,82) mais pas sur les questions rédigées à la main (0,63) : le reranker
   d'origine reste utilisé par défaut.
-- **Point de vigilance** : une réponse affirme qu'on peut retirer deux disques à la fois, contrairement à la source
-  citée (voir le rapport) ; une vérification de fidélité est à ajouter avant toute mise en service.
+- **Itération 3** : le cas « peut-on retirer deux disques à la fois ? », répondu « oui » à tort, est corrigé (consignes de sécurité indexées à part, garde-fou sur les interdictions) ; aucun ticket n'est plus proposé sans code d'alarme. Un juge LLM de fidélité a été testé : inefficace avec le modèle 3B, il est désactivé par défaut.
 - **Latence (CPU)** : médiane de 38 s (texte) et 77 s (photo) ; p95 de 64 s et 175 s.
 - **Itération 1** (12 documents, sans OCR) : 89 % sur les 150 scénarios du sujet, contre 91 % à l'itération 2.
 

@@ -39,6 +39,8 @@ Toute question sur un autre équipement conduit à une abstention (« aucune sou
 - **Lecture d'image imparfaite** : le modèle 3B utilisé sur le poste sans GPU confond parfois les étiquettes ;
   l'identification combine donc similarité visuelle (CLIP), codes lus à l'écran et noms de voyants, puis demande
   une clarification en cas de doute. Un modèle 7B sur GPU reste recommandé.
+- **Fidélité des réponses** : une réponse qui autorise une action interdite par une consigne de sécurité est bloquée par un garde-fou déterministe. Les autres erreurs de fond (mauvaise ligne d'un tableau, confusion fixe / clignotant) ne sont pas détectées automatiquement : le juge LLM testé, avec le modèle 3B, ne repère aucune erreur. Il est activable (`MAINTIDOC_FAITHFULNESS_CHECK=1`) avec un modèle plus grand.
+- **Tickets** : aucun brouillon n'est proposé sans code d'alarme, pour éviter les doublons.
 - **OCR** : les documents scannés et le texte des photos sont lus par OCR local (EasyOCR). Les erreurs de lecture
   sont possibles (confusions O/0, mots dans le désordre sur une photo) : les passages issus de l'OCR sont signalés
   comme tels, et un texte lu sur une photo n'est jamais exécuté comme une instruction.

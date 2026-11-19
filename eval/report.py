@@ -190,6 +190,41 @@ def build_report():
         if not r['passed']:
             fails = ', '.join(n for n, ok in r['checks'] if not ok).replace('|', ' ou ')
             L.append(f"| {r['id']} | {r['category']} | {fails} | {(r.get('result') or {}).get('status', '-')} |")
+    # ---------------------------------------------------------- itération 3 : sécurité des réponses
+    it3f, calf = RES / 'e2e_runs_iter3.jsonl', RES / 'faithfulness_calibration.json'
+    if it3f.exists():
+        it3 = {json.loads(l)['id']: json.loads(l) for l in it3f.read_text(encoding='utf-8').splitlines()}
+        it2 = {r['id']: r for r in runs}
+        ids = [i for i in it3 if i in it2]
+        L += ['', '### Itération 3 : sécurité des réponses (scénarios concernés)', '',
+              "Deux corrections, puis réévaluation des scénarios qu'elles touchent (questions textuelles, corpus étendu, "
+              "tickets) :",
+              "- **Consignes de sécurité indexées à part** (« ATTENTION », « Interdits ») et **toujours jointes aux "
+              "preuves** pour une question sur une action physique, avec un **garde-fou déterministe** qui bloque une "
+              "réponse autorisant une action interdite (« ne jamais … »).",
+              "- **Pas de brouillon de ticket sans code d'alarme** : l'agent demande le code et rappelle les tickets "
+              "déjà ouverts (évite les doublons).", '']
+        if calf.exists():
+            cal = json.loads(calf.read_text(encoding='utf-8'))
+            L += [f"**Juge LLM de fidélité (calibration hors ligne sur {cal['n']} réponses de l'itération 2)** : "
+                  f"verdicts {dict(cal['verdicts'])} ; bonnes réponses bloquées à tort : {len(cal['faux_positifs_bloques'])} ; "
+                  f"réponses fausses détectées : {len(cal['echecs_bloques'])} (TEX-10 jugée « {cal['TEX-10']['verdict']} »). "
+                  f"Le juge 3B valide tout et ajoute {cal['secondes_moyennes']} s par réponse : il est désactivé par défaut "
+                  "(`MAINTIDOC_FAITHFULNESS_CHECK=1` pour l'activer avec un modèle plus grand).", '']
+        L += ['| Catégorie | Scénarios | Itération 2 | Itération 3 |', '|---|---|---|---|']
+        for c in sorted({it3[i]['category'] for i in ids}, key=lambda x: list(CAT_LABEL).index(x)):
+            sub = [i for i in ids if it3[i]['category'] == c]
+            L.append(f"| {CAT_LABEL[c]} | {len(sub)} | {sum(it2[i]['passed'] for i in sub)} | "
+                     f"{sum(it3[i]['passed'] for i in sub)} |")
+        L.append(f"| **Total** | {len(ids)} | **{sum(it2[i]['passed'] for i in ids)}** | "
+                 f"**{sum(it3[i]['passed'] for i in ids)}** |")
+        gained = sorted(i for i in ids if it3[i]['passed'] and not it2[i]['passed'])
+        lost = sorted(i for i in ids if it2[i]['passed'] and not it3[i]['passed'])
+        L += ['', f"Scénarios corrigés : {', '.join(gained) or 'aucun'} ; scénarios régressés : {', '.join(lost) or 'aucun'}."]
+        if 'TEX-10' in it3:
+            L.append(f"TEX-10 (« Peut-on retirer deux disques en même temps ? ») : "
+                     f"« {(it3['TEX-10'].get('result') or {}).get('answer', '')[:160]} »")
+        L.append('')
     analysis = ROOT / 'eval' / 'analyse_echecs.md'
     if analysis.exists():
         L += ['', analysis.read_text(encoding='utf-8').strip()]

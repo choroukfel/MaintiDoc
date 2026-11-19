@@ -1,7 +1,7 @@
 """Workflow agentique LangGraph de MaintiDoc.
 
 check_access -> analyze (texte + photo) -> retrieve -> mcp_lookup (si besoin) -> generate -> verify
-  -> [draft_ticket -> human_approval (interrupt) -> create_ticket] -> finalize
+  -> check_faithfulness -> [draft_ticket -> human_approval (interrupt) -> create_ticket] -> finalize
 
 Les appels d'outils sont décidés par le code du graphe (intention de l'utilisateur), jamais par le texte
 des documents ou du modèle : une injection ne peut donc pas déclencher d'appel MCP.
@@ -23,7 +23,7 @@ import difflib
 from . import config, ocr, security
 from .llm import BudgetExceeded, LLMUnavailable, image_to_bytes
 from .retrieval import CLIP_CONFIDENT_MARGIN, Retriever, detect_models, load_image
-from .schemas import Answer, Citation, LLMAnswer, LLMTicket, TicketDraft, VisualAnalysis
+from .schemas import Answer, Citation, FaithfulnessCheck, LLMAnswer, LLMTicket, TicketDraft, VisualAnalysis
 from .vision import describe as describe_leds
 from .vision import detect_lit_leds
 
@@ -37,6 +37,8 @@ HISTORY_RE = re.compile(r'historique|derni[eè]res?\s+interventions?|ant[ée]c[�
 TICKET_RE = re.compile(r'(?:pr[ée]pare|cr[ée]e|ouvre|r[ée]dige|ouvrir|cr[ée]er|pr[ée]parer)\w*\s+(?:un\s+|le\s+)?ticket|'
                        r'ticket\s+si\s+n[ée]cessaire', re.I)
 CODE_RE = re.compile(r'\b(?:AL|A|F|E)-\d{2,3}\b')
+ACTION_RE = re.compile(r'\b(retir|remplac|d[ée]branch|ouvr|extrai|coup|red[ée]marr|r[ée]arm|d[ée]mont|intervenir|'
+                       r'intervention|manipul|enlev|ins[ée]r|changer)\w*', re.I)
 ANY_CODE_RE = re.compile(r'\b(?!INC-|TCK-)[A-Z]{1,3}-\d{2,3}\b')  # codes d'alarme / d'événement cités par l'utilisateur
 LED_RE = re.compile(r'\b(voyants?|led)\b', re.I)
 DOC_REF_RE = re.compile(r'\b(note|fournisseur|bulletin|manuel|document|proc[ée]dure|[A-Z]+-[A-Z]+-\d{3})\b', re.I)
@@ -93,6 +95,34 @@ def clean_visual(va: VisualAnalysis) -> VisualAnalysis:
         inds = []
     return VisualAnalysis(readable=va.readable, equipment_model=ok(va.equipment_model), screen_text=ok(va.screen_text),
                           lit_indicators=inds, notes=ok(va.notes))
+
+
+PERMISSION_RE = re.compile(r"\b(oui|vous pouvez|on peut|il est possible|c'est possible|est autoris[ée]e?|est permis)\b",
+                           re.I)
+NEGATION_RE = re.compile(r"\b(non|ne (?:pouvez|peut|doit|devez|faut)\b[^.]*\bpas|pas possible|jamais|interdit|"
+                         r"n'est pas|ne pas)\b", re.I)
+PROHIBITION_RE = re.compile(r"ne jamais ([^;.]+)", re.I)
+_STOPWORDS = {'un', 'une', 'des', 'les', 'le', 'la', 'de', 'du', 'd', 'l', 'en', 'sur', 'dont', 'a', 'au', 'aux', 'et'}
+
+
+def _words(text: str) -> set[str]:
+    from .retrieval import normalize
+    return {w for w in re.findall(r"[a-z0-9]+", normalize(text)) if w not in _STOPWORDS and len(w) > 2}
+
+
+def prohibition_violated(answer: str, safety_texts: list[str]) -> str | None:
+    """Retourne l'action interdite (« ne jamais … ») que la réponse autorise, sinon None.
+    Règle : la réponse contient une permission (« oui », « vous pouvez »…), aucune négation, et reprend au moins
+    deux mots de l'action interdite (ex. « retirer » et « disques »)."""
+    if not PERMISSION_RE.search(answer) or NEGATION_RE.search(answer):
+        return None
+    answer_words = _words(answer)
+    for text in safety_texts:
+        for m in PROHIBITION_RE.finditer(text):
+            action = m.group(1).strip()
+            if len(_words(action) & answer_words) >= 2:
+                return action
+    return None
 
 
 def _answer(status, text, **kw) -> dict:
@@ -322,6 +352,25 @@ class Agent:
                 contradictions.append((d, old))  # même si l'ancien document n'est pas dans les preuves
         if contradictions:
             flags['contradiction'] = contradictions
+        # Question sur une action physique : la consigne de sécurité la plus pertinente des documents autorisés (pour ce
+        # modèle) est toujours jointe aux preuves, pour que la réponse et la vérification de fidélité la voient.
+        if ACTION_RE.search(s['question']) and \
+                not any(self.retriever.elements[e['key']].get('securite') for e in evidence):
+            allowed = self.retriever.allowed_documents(s['user']['groupes'])
+            if s.get('model'):
+                allowed = {d for d in allowed if s['model'] in self.retriever.metadata[d]['modeles']} or allowed
+            present = {e['key'] for e in evidence}
+            for uid in self.retriever.lexical(query, allowed, limit=40):
+                key = self.retriever.unit_key(uid)
+                el = self.retriever.elements[key]
+                if el.get('securite') and key not in present:
+                    content, _ = security.sanitize(el['content'][:config.EVIDENCE_MAX_CHARS])
+                    evidence.append({'eid': f'E{len(evidence) + 1}', 'key': key, 'document_id': el['document_id'],
+                                     'page': el['page'], 'element_id': el['element_id'], 'type': el['type'],
+                                     'titre': el['titre'], 'confiance': el['niveau_confiance'], 'content': content,
+                                     'suspect': False})
+                    flags['safety_evidence'] = key
+                    break
         if any(e['confiance'] != 'valide' for e in evidence):
             flags['unverified_source'] = True
         route = 'mcp' if s.get('equipment_id') and (s['intent']['history'] or s['intent']['ticket']) else 'generate'
@@ -395,6 +444,9 @@ class Agent:
             ctx.append(f'Tickets ouverts : {t}.')
         for new, old in (s.get('flags') or {}).get('contradiction', []):
             ctx.append(f'ATTENTION : {new} modifie {old} ; les valeurs peuvent diverger, signale-le.')
+        if (s.get('flags') or {}).get('safety_evidence'):
+            ctx.append("Une consigne de sécurité figure dans les preuves : ta réponse doit la respecter et la rappeler "
+                       "si elle concerne l'action demandée.")
         variables = {'question': s['question'], 'context': '\n'.join(ctx), 'evidence': ev_text}
         llm_answer, stats, err = None, [], None
         for attempt in range(2):
@@ -474,17 +526,23 @@ class Agent:
             uncertainties.append('Équipement non précisé : historique non consulté.')
         proposed, duplicate = None, None
         if intent.get('ticket') and s.get('equipment_id') and status == 'answered' and s.get('open_tickets') is not None:
-            # Sujet du ticket : codes de la demande et de la photo ; la réponse seulement à défaut (elle peut citer
-            # d'autres alarmes de l'historique, ce qui ferait croire à tort à un doublon).
-            codes = set(CODE_RE.findall(s['question'] + ' ' + json.dumps(s.get('visual') or {}))) or \
-                set(CODE_RE.findall(answer_text))
-            for t in s['open_tickets']:
-                if codes & set(CODE_RE.findall(t['titre'])):
-                    duplicate = t
-            if duplicate:
-                answer_text += f" Un ticket ouvert couvre déjà ce sujet : {duplicate['id']} ({duplicate['titre']}) ; aucun nouveau ticket n'est proposé."
+            # Sujet du ticket : le code d'alarme donné par la demande ou lu sur la photo. Sans code, impossible de savoir
+            # si un ticket ouvert couvre déjà le problème : on demande le code au lieu de proposer un brouillon.
+            codes = set(CODE_RE.findall(s['question'] + ' ' + json.dumps(s.get('visual') or {})))
+            if not codes:
+                ouverts = '; '.join(f"{t['id']} ({t['titre']})" for t in s['open_tickets'])
+                clar = ("Pour préparer le ticket sans risque de doublon, indiquez le code d'alarme affiché sur l'interface "
+                        "ou l'écran (par exemple AL-02)." + (f" Tickets déjà ouverts sur {s['equipment_id']} : {ouverts}."
+                                                              if ouverts else ''))
+                uncertainties.append("Code d'alarme non précisé : aucun brouillon de ticket proposé.")
             else:
-                proposed = 'draft_ticket'
+                for t in s['open_tickets']:
+                    if codes & set(CODE_RE.findall(t['titre'])):
+                        duplicate = t
+                if duplicate:
+                    answer_text += f" Un ticket ouvert couvre déjà ce sujet : {duplicate['id']} ({duplicate['titre']}) ; aucun nouveau ticket n'est proposé."
+                else:
+                    proposed = 'draft_ticket'
         result = Answer(status=status, answer=answer_text,
                         citations=[Citation(document_id=e['document_id'], page=e['page'], element_id=e['element_id'])
                                    for e in cited],
@@ -493,6 +551,52 @@ class Agent:
                         proposed_action=proposed).model_dump()
         return {'result': result, 'route': 'draft' if proposed else 'end',
                 'trace': self._trace(s, 'verify', cited=len(cited), invalid=len(invalid), duplicate=bool(duplicate))}
+
+    def check_faithfulness(self, s: State) -> dict:
+        """Vérification de fidélité : un second appel au modèle compare la réponse aux preuves récupérées.
+        « contredite » bloque la réponse ; « non_trouvee » ajoute une mise en garde ; « soutenue » laisse passer."""
+        res = dict(s['result'])
+        route = 'draft' if res.get('proposed_action') else 'end'
+        if res['status'] != 'answered' or not s.get('evidence'):
+            return {'route': route, 'trace': self._trace(s, 'check_faithfulness', skipped=True)}
+        # 1. Garde-fou déterministe : une réponse qui autorise une action qu'une consigne de sécurité interdit est bloquée.
+        violated = prohibition_violated(res['answer'], [e['content'] for e in s['evidence']
+                                                        if self.retriever.elements[e['key']].get('securite')])
+        if violated:
+            refs = ', '.join(f"{c['document_id']} p.{c['page']} {c['element_id']}" for c in res['citations'])
+            res.update(status='needs_clarification', proposed_action=None,
+                       answer=("La réponse générée autorise une action interdite par une consigne de sécurité : elle "
+                               f"n'est pas affichée. Consigne : « ne jamais {violated} ». Consultez : {refs}."),
+                       clarification_question='Pouvez-vous reformuler ou préciser votre question ?',
+                       uncertainties=[*res['uncertainties'], f'Garde-fou : réponse contraire à la consigne « ne jamais {violated} ».'])
+            return {'result': res, 'route': 'end', 'trace': self._trace(s, 'check_faithfulness', verdict='interdiction')}
+        # 2. Juge LLM (facultatif) : inefficace avec le modèle 3B sur CPU (calibration : aucune erreur détectée).
+        if not config.FAITHFULNESS_CHECK:
+            return {'route': route, 'trace': self._trace(s, 'check_faithfulness', verdict='regle_ok')}
+        evidence = '\n\n'.join(f"[{e['document_id']} {e['element_id']}] {e['content']}" for e in s['evidence'])[:3000]
+        try:
+            chk, stats = self._llm(s, config.PROMPT_VERSIONS['evidence_check'],
+                                   {'question': s['question'], 'answer': res['answer'], 'evidence': evidence},
+                                   FaithfulnessCheck, num_predict=120)
+        except (ValueError, BudgetExceeded) as ex:
+            res['uncertainties'] = [*res['uncertainties'], 'Vérification de fidélité non effectuée.']
+            return {'result': res, 'llm_calls': s.get('llm_calls', 0), 'route': route,
+                    'trace': self._trace(s, 'check_faithfulness', error=str(ex)[:120])}
+        raison = (chk.raison or '').strip().rstrip('.')
+        if chk.verdict == 'contredite':
+            refs = ', '.join(f"{c['document_id']} p.{c['page']} {c['element_id']}" for c in res['citations'])
+            res.update(status='needs_clarification', proposed_action=None,
+                       answer=("La réponse générée contredit les sources récupérées : elle n'est pas affichée, par "
+                               f"sécurité. Consultez directement : {refs}."),
+                       clarification_question='Pouvez-vous reformuler ou préciser votre question ?',
+                       uncertainties=[*res['uncertainties'],
+                                      f'Vérification de fidélité : réponse contredite par la source ({raison}).'])
+            route = 'end'
+        elif chk.verdict == 'non_trouvee':
+            res['uncertainties'] = [*res['uncertainties'], "Vérification de fidélité : une partie de la réponse n'a "
+                                                           f"pas été retrouvée dans les sources ({raison})."]
+        return {'result': res, 'llm_calls': s.get('llm_calls', 0), 'route': route,
+                'trace': self._trace(s, 'check_faithfulness', verdict=chk.verdict, stats=stats)}
 
     def draft_ticket(self, s: State) -> dict:
         user, res = s['user'], dict(s['result'])
@@ -554,8 +658,8 @@ class Agent:
     # ------------------------------------------------------------------ graphe
     def _build(self):
         g = StateGraph(State)
-        for name in ('check_access', 'analyze', 'retrieve', 'mcp_lookup', 'generate', 'verify', 'draft_ticket',
-                     'human_approval', 'create_ticket', 'finalize'):
+        for name in ('check_access', 'analyze', 'retrieve', 'mcp_lookup', 'generate', 'verify', 'check_faithfulness',
+                     'draft_ticket', 'human_approval', 'create_ticket', 'finalize'):
             g.add_node(name, getattr(self, name))
         route = lambda s: s.get('route', 'end')  # noqa: E731
         g.add_edge(START, 'check_access')
@@ -564,7 +668,8 @@ class Agent:
         g.add_conditional_edges('retrieve', route, {'mcp': 'mcp_lookup', 'generate': 'generate', 'end': 'finalize'})
         g.add_edge('mcp_lookup', 'generate')
         g.add_edge('generate', 'verify')
-        g.add_conditional_edges('verify', route, {'draft': 'draft_ticket', 'end': 'finalize'})
+        g.add_edge('verify', 'check_faithfulness')
+        g.add_conditional_edges('check_faithfulness', route, {'draft': 'draft_ticket', 'end': 'finalize'})
         g.add_conditional_edges('draft_ticket', route, {'approval': 'human_approval', 'end': 'finalize'})
         g.add_conditional_edges('human_approval', route, {'create': 'create_ticket', 'end': 'finalize'})
         g.add_edge('create_ticket', 'finalize')

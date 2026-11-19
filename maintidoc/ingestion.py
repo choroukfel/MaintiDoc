@@ -22,6 +22,7 @@ HEADER_FOOTER = re.compile(
 TAB_REF = re.compile(r'^((?:[A-Z]+-)?TAB-\d+)\s*:')
 FIG_REF = re.compile(r'^(FIG-\d+)\s*:')
 CHUNK_CHARS = 700
+SAFETY_RE = re.compile(r'^(ATTENTION|Attention|AVERTISSEMENT|Interdits?)\b')
 
 
 def load_metadata() -> dict[str, dict]:
@@ -173,20 +174,34 @@ def parse_document(meta: dict, image_dir: Path) -> tuple[list[dict], list[dict]]
             if TAB_REF.match(first):
                 continue
             paras.append(first)
+        # Les consignes de sécurité (« ATTENTION », « Interdits ») forment des éléments à part entière, pour être
+        # retrouvées seules plutôt que noyées dans le texte voisin.
         chunks, cur = [], ''
         for p in paras:
+            if SAFETY_RE.match(p):
+                if cur:
+                    chunks.append((cur, False)); cur = ''
+                chunks.append((p, True))
+                continue
             if cur and len(cur) + len(p) > CHUNK_CHARS:
-                chunks.append(cur); cur = ''
+                chunks.append((cur, False)); cur = ''
             cur = f'{cur} {p}'.strip()
         if cur:
-            chunks.append(cur)
-        for k, chunk in enumerate(chunks, 1):
+            chunks.append((cur, False))
+        k_txt = k_sec = 0
+        for chunk, safety in chunks:
             if len(chunk) < 40:
                 continue
-            ref = f'TXT-P{pno:02d}-{k}'
-            elements.append({**_base(meta, pno), 'element_id': ref, 'type': 'texte', 'content': chunk})
+            if safety:
+                k_sec += 1
+                ref = f'SEC-P{pno:02d}-{k_sec}'
+            else:
+                k_txt += 1
+                ref = f'TXT-P{pno:02d}-{k_txt}'
+            elements.append({**_base(meta, pno), 'element_id': ref, 'type': 'texte', 'securite': safety,
+                             'content': chunk})
             units.append({'unit_id': f'{doc_id}/{ref}', 'document_id': doc_id, 'element_id': ref,
-                          'text': f'[{title}] {chunk}'})
+                          'text': f'[{title}] {"Consigne de sécurité : " if safety else ""}{chunk}'})
     pdf.close()
     return elements, units
 

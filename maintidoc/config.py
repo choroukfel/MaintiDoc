@@ -61,4 +61,8 @@ APPROVAL_SECRET = os.environ['MAINTIDOC_APPROVAL_SECRET']
 JWT_SECRET = os.environ['MAINTIDOC_JWT_SECRET']
 
 PROMPT_VERSIONS = {'answer': 'answer_v1', 'visual': 'visual_analysis_v2', 'ticket': 'ticket_draft_v1',
-                   'evidence_check': 'evidence_check_v1'}
+                   'evidence_check': 'evidence_check_v2'}
+# Vérification de fidélité avant affichage (un appel au modèle de plus par réponse affirmative)
+# Juge LLM de fidélité : désactivé par défaut (calibré inefficace avec Qwen2.5-VL 3B ; à activer avec un modèle plus grand).
+# Le garde-fou déterministe sur les interdictions reste toujours actif.
+FAITHFULNESS_CHECK = os.getenv('MAINTIDOC_FAITHFULNESS_CHECK', '0') == '1'

@@ -52,6 +52,11 @@ class TicketDraft(BaseModel):
     references: list[str] = Field(default_factory=list)
 
 
+class FaithfulnessCheck(BaseModel):
+    verdict: Literal['soutenue', 'non_trouvee', 'contredite']
+    raison: str = Field(default='', max_length=400)
+
+
 class LLMTicket(BaseModel):
     title: str = Field(min_length=5, max_length=120)
     description: str = Field(min_length=10, max_length=1200)

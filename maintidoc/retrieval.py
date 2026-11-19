@@ -129,7 +129,7 @@ class Retriever:
     def _load_or_build(self):
         from qdrant_client import models as qm
         state_file = self.index_dir / 'state.json'
-        version = f"{ingestion.corpus_hash()}|{config.TEXT_EMBED_MODEL}|{config.CLIP_MODEL}|vues{len(PHOTO_VIEWS)}|ocr{int(ocr_mod.ENABLED)}"
+        version = f"{ingestion.corpus_hash()}|{config.TEXT_EMBED_MODEL}|{config.CLIP_MODEL}|vues{len(PHOTO_VIEWS)}|ocr{int(ocr_mod.ENABLED)}|sec1"
         state = json.loads(state_file.read_text(encoding='utf-8')) if state_file.exists() else {}
         collections = {c.name for c in self.qdrant.get_collections().collections}
         if state.get('version') != version or not {'units', 'figures'} <= collections:

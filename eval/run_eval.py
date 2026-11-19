@@ -201,7 +201,7 @@ def run_action(s, agent):
     raise ValueError(e['action'])
 
 
-def run_e2e(limit: int | None, ids: list[str] | None):
+def run_e2e(limit: int | None, ids: list[str] | None, runs_name: str = 'e2e_runs.jsonl'):
     from maintidoc.agent import Agent
     from maintidoc.llm import OllamaVLM
     from maintidoc.retrieval import get_retriever
@@ -210,7 +210,7 @@ def run_e2e(limit: int | None, ids: list[str] | None):
         import ctypes
         ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001)  # ES_CONTINUOUS | ES_SYSTEM_REQUIRED
     RES.mkdir(parents=True, exist_ok=True)
-    runs_file = RES / 'e2e_runs.jsonl'
+    runs_file = RES / runs_name
     done = {}
     if runs_file.exists():
         for line in runs_file.read_text(encoding='utf-8').splitlines():
@@ -275,11 +275,12 @@ if __name__ == '__main__':
     ap.add_argument('cmd', choices=['retrieval', 'e2e', 'report'])
     ap.add_argument('--limit', type=int)
     ap.add_argument('--ids', nargs='*')
+    ap.add_argument('--runs', default='e2e_runs.jsonl', help='fichier de résultats dans eval/results')
     a = ap.parse_args()
     if a.cmd == 'retrieval':
         run_retrieval()
     elif a.cmd == 'e2e':
-        run_e2e(a.limit, a.ids)
+        run_e2e(a.limit, a.ids, a.runs)
     else:
         from eval.report import build_report
         build_report()
