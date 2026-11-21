@@ -1,0 +1,14 @@
+title = "MaintiDoc : recherche de secrets"
+
+# Toutes les règles par défaut de gitleaks restent actives.
+[extend]
+useDefault = true
+
+# Seules exceptions : les valeurs d'exemple de .env.example et de la CI, qui ne sont pas des secrets
+# (« remplacer-par-une-longue-valeur-aleatoire », « ci-only-not-a-secret »).
+[allowlist]
+description = "Valeurs d'exemple documentées, non secrètes"
+regexes = [
+  '''^remplacer-[a-z0-9-]+$''',
+  '''^ci-only-not-a-secret$''',
+]
