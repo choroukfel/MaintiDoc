@@ -24,6 +24,7 @@ mlflow-skinny==3.18.0
 pytest==9.2.0
 easyocr==1.7.2
 psycopg[binary]==3.3.9
+cryptography==50.0.2
 minio==7.2.20
 
 # Génération du corpus fictif (scripts/generate_corpus.py)

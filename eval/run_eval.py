@@ -19,7 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from maintidoc import config, security  # noqa: E402
-from maintidoc.retrieval import detect_models, load_image, normalize  # noqa: E402
+from maintidoc.retrieval import detect_models, normalize  # noqa: E402
 
 RES = ROOT / 'eval' / 'results'
 SCEN = json.loads((ROOT / 'eval' / 'scenarios.json').read_text(encoding='utf-8'))
@@ -60,8 +60,11 @@ def run_retrieval():
 
     from maintidoc.retrieval import Retriever
     r = Retriever(reranker='none')
-    configs = [('dense', 'dense', 'none'), ('bm25', 'bm25', 'none'), ('hybride RRF', 'hybrid', 'none'),
-               ('hybride + reranker origine', 'hybrid', 'base'), ('hybride + reranker adapté', 'hybrid', 'finetuned')]
+    configs = [('dense', 'dense', 'none', None), ('bm25', 'bm25', 'none', None), ('hybride RRF', 'hybrid', 'none', None),
+               ('hybride RRF + texte->image (CLIP multilingue)', 'hybrid', 'none', True),
+               ('hybride + reranker origine', 'hybrid', 'base', None),
+               ('hybride + reranker origine + texte->image', 'hybrid', 'base', True),
+               ('hybride + reranker adapté', 'hybrid', 'finetuned', None)]
     per_cfg = defaultdict(list)
     image_cmp = defaultdict(list)
     top_scores = []
@@ -84,8 +87,9 @@ def run_retrieval():
                                'score': hits[0].rerank if hits else None})
         if not gold:
             continue
-        for name, mode, rr in configs:
-            hits = r.search(s['question'], groups, image=img, models=models or model_img, top_k=10, mode=mode, reranker=rr)
+        for name, mode, rr, t2i in configs:
+            hits = r.search(s['question'], groups, image=img, models=models or model_img, top_k=10, mode=mode, reranker=rr,
+                            text_to_image=t2i)
             m = metrics([h.key for h in hits], gold)
             per_cfg[name].append({**m, 'id': s['id'], 'cat': s['category'],
                                   'heldout': all(k.split('/')[0] in TEST_DOCS for k in gold)})

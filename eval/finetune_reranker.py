@@ -97,8 +97,41 @@ def build_dataset(r: Retriever):
                     negs.append(lex[0])
                 for neg in negs:
                     data[split].append({'question': q, 'positive': units[pos_id]['text'], 'negative': units[neg]['text'],
-                                        'pos_id': pos_id, 'neg_id': neg})
+                                        'pos_id': pos_id, 'neg_id': neg, 'cle': row[0]})
     return data
+
+
+def verify_and_cap(data: dict, cap: int = 1500) -> tuple[dict, dict]:
+    """Vérification automatique des triplets (le sujet demande des exemples « vérifiés ») puis plafond de `cap`.
+    Règles : le positif contient l'élément demandé (première cellule de la ligne) ; le négatif ne le contient pas
+    (sinon c'est un faux négatif) ; pas de triplet en double ; positif et négatif différents."""
+    from maintidoc.retrieval import normalize
+    stats = {'generes': sum(len(v) for v in data.values()), 'positif_sans_element': 0, 'negatif_ambigu': 0,
+             'doublons': 0}
+    out, seen = {k: [] for k in data}, set()
+    for split, rows in data.items():
+        for ex in rows:
+            key = normalize(ex['cle'] or '')
+            sig = (ex['question'], ex['pos_id'], ex['neg_id'])
+            if sig in seen or ex['pos_id'] == ex['neg_id']:
+                stats['doublons'] += 1
+                continue
+            if key and key not in normalize(ex['positive']):
+                stats['positif_sans_element'] += 1
+                continue
+            neg = normalize(ex['negative'])
+            if key and len(key) > 2 and f': {key};' in neg.replace(' - ', '; ') + ';':
+                stats['negatif_ambigu'] += 1  # le négatif porte le même élément : faux négatif probable
+                continue
+            seen.add(sig)
+            out[split].append(ex)
+    total = sum(len(v) for v in out.values())
+    if total > cap:  # plafond : on réduit l'entraînement, validation et test restent intacts
+        keep = cap - len(out['val']) - len(out['test'])
+        out['train'] = rng.sample(out['train'], max(0, keep))
+    stats['retenus'] = {k: len(v) for k, v in out.items()}
+    stats['total_retenu'] = sum(stats['retenus'].values())
+    return out, stats
 
 
 def mrr_at_10(model, r: Retriever, examples):
@@ -157,8 +190,12 @@ def train(base_model, train_rows, epochs=2, batch=16, lr=2e-5):
 def main():
     from sentence_transformers import CrossEncoder
     torch.manual_seed(42)
+    if sys.platform == 'win32':  # empêche la mise en veille pendant l'entraînement
+        import ctypes
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001)
     r = Retriever(reranker='none')
-    data = build_dataset(r)
+    data, verification = verify_and_cap(build_dataset(r))
+    print('vérification', verification, flush=True)
     OUT_DATA.mkdir(parents=True, exist_ok=True)
     for split, rows in data.items():
         with open(OUT_DATA / f'reranker_{split}.jsonl', 'w', encoding='utf-8') as f:
@@ -174,7 +211,7 @@ def main():
     print('adapté', after, flush=True)
     config.RERANKER_FINETUNED.parent.mkdir(parents=True, exist_ok=True)
     model.save(str(config.RERANKER_FINETUNED))
-    report = {'triplets': sizes, 'split': {'test_docs': sorted(TEST_DOCS), 'val_docs': sorted(VAL_DOCS),
+    report = {'triplets': sizes, 'verification': verification, 'split': {'test_docs': sorted(TEST_DOCS), 'val_docs': sorted(VAL_DOCS),
                                            'exclus': sorted(EXCLUDE)},
               'base_model': config.RERANKER_BASE, 'mrr10_base': before, 'mrr10_adapte': after, 'training': info}
     out = ROOT / 'eval' / 'results'

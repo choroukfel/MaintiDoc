@@ -86,7 +86,7 @@ class Retriever:
         self.index_dir.mkdir(parents=True, exist_ok=True)
         self.qdrant = QdrantClient(url=config.QDRANT_URL) if config.QDRANT_URL else \
             QdrantClient(path=str(self.index_dir / 'qdrant'))
-        self._text_model = self._clip = None
+        self._text_model = self._clip = self._clip_text = None
         self._rerankers: dict[str, object] = {}
         self.reranker_mode = reranker or config.RERANKER_MODE
         self._load_or_build()
@@ -124,6 +124,27 @@ class Retriever:
     def embed_images(self, images: list[Image.Image]) -> np.ndarray:
         return np.asarray(self.clip.encode(images, normalize_embeddings=True, show_progress_bar=False),
                           dtype=np.float32)
+
+    @property
+    def clip_text(self):
+        """Encodeur de texte CLIP multilingue (français compris), aligné sur l'espace image de CLIP ViT-B/32."""
+        if self._clip_text is None:
+            from sentence_transformers import SentenceTransformer
+            self._clip_text = SentenceTransformer(config.CLIP_TEXT_MODEL, device='cpu')
+        return self._clip_text
+
+    def visual_from_text(self, query: str, groups, doc_ids, limit=5) -> list[tuple[str, float]]:
+        try:
+            v = self.clip_text.encode([query], normalize_embeddings=True, show_progress_bar=False)[0]
+        except Exception:  # modèle absent : la recherche texte -> image est simplement ignorée
+            return []
+        res = self.qdrant.query_points('figures', query=np.asarray(v, dtype=np.float32).tolist(),
+                                       query_filter=self._doc_filter(groups, doc_ids),
+                                       limit=limit * len(PHOTO_VIEWS)).points
+        best: dict[str, float] = {}
+        for p in res:
+            best[p.payload['key']] = max(best.get(p.payload['key'], -1.0), float(p.score))
+        return sorted(best.items(), key=lambda x: -x[1])[:limit]
 
     # ------------------------------------------------------------------ index
     def _load_or_build(self):
@@ -234,8 +255,10 @@ class Retriever:
 
     def search(self, query: str, groups: list[str], image: Image.Image | None = None,
                models: list[str] | None = None, top_k: int = config.EVIDENCE_TOP_K, mode: str = 'hybrid',
-               reranker: str | None = None, rrf_k: int = 60) -> list[Hit]:
+               reranker: str | None = None, rrf_k: int = 60, text_to_image: bool | None = None) -> list[Hit]:
         """mode : 'dense' | 'bm25' | 'hybrid'. reranker : 'none' | 'base' | 'finetuned' (défaut : config)."""
+        if text_to_image is None:
+            text_to_image = config.TEXT_TO_IMAGE
         allowed = self.allowed_documents(groups)
         doc_ids = None
         if models:
@@ -271,6 +294,14 @@ class Retriever:
                 hit = fused.setdefault(key, Hit(key, self.elements[key]))
                 hit.score += 1.0 / (rrf_k + rank)
                 hit.sources.append('image')
+                unit_texts.setdefault(key, [f'{key}'])
+        if mode == 'hybrid' and text_to_image:
+            # Recherche texte -> schéma : la question (en français) comparée aux images des figures, via l'encodeur
+            # de texte CLIP multilingue aligné sur l'espace image de CLIP ViT-B/32.
+            for rank, (key, _) in enumerate(self.visual_from_text(query, groups, doc_ids), 1):
+                hit = fused.setdefault(key, Hit(key, self.elements[key]))
+                hit.score += 1.0 / (rrf_k + rank)
+                hit.sources.append('texte->image')
                 unit_texts.setdefault(key, [f'{key}'])
         hits = sorted(fused.values(), key=lambda h: -h.score)[:20]
         rr = self.get_reranker(reranker or self.reranker_mode)

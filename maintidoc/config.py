@@ -22,6 +22,10 @@ VLM_MODEL = os.getenv('MAINTIDOC_VLM', 'qwen2.5vl:3b')
 # (CPU, disque limité). Changer la variable d'environnement pour revenir à BAAI/bge-m3.
 TEXT_EMBED_MODEL = os.getenv('MAINTIDOC_TEXT_EMBED', 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
 CLIP_MODEL = os.getenv('MAINTIDOC_CLIP', 'sentence-transformers/clip-ViT-B-32')
+# Encodeur de texte CLIP multilingue (aligné sur CLIP ViT-B/32) : recherche « question en français -> schéma »
+CLIP_TEXT_MODEL = os.getenv('MAINTIDOC_CLIP_TEXT', 'sentence-transformers/clip-ViT-B-32-multilingual-v1')
+# Désactivée par défaut : mesurée sans gain avec le reranker et dégradant la fusion sans reranker (rapport, section 2)
+TEXT_TO_IMAGE = os.getenv('MAINTIDOC_TEXT_TO_IMAGE', '0') == '1'
 RERANKER_BASE = os.getenv('MAINTIDOC_RERANKER_BASE', 'cross-encoder/mmarco-mMiniLMv2-L12-H384-v1')
 RERANKER_FINETUNED = MODELS_DIR / 'reranker-maintidoc'
 # 'finetuned' | 'base' | 'none'
@@ -40,6 +44,9 @@ MAX_QUESTION_CHARS = 2000
 NUM_CTX = int(os.getenv('MAINTIDOC_NUM_CTX', 4096))
 NUM_PREDICT = int(os.getenv('MAINTIDOC_NUM_PREDICT', 400))
 EVIDENCE_TOP_K = int(os.getenv('MAINTIDOC_TOP_K', 4))
+# Nombre d'images de figures du corpus jointes à la génération de la réponse. 0 par défaut : avec le modèle 3B,
+# l'image jointe a fait plus de mal que de bien (3 régressions, 1 gain : rapport, itération 4) ; 1 avec un modèle plus grand.
+MAX_EVIDENCE_IMAGES = int(os.getenv('MAINTIDOC_MAX_EVIDENCE_IMAGES', 0))
 EVIDENCE_MAX_CHARS = int(os.getenv('MAINTIDOC_EVIDENCE_CHARS', 1100))
 LLM_TIMEOUT = float(os.getenv('MAINTIDOC_LLM_TIMEOUT', 420))
 
@@ -58,6 +65,11 @@ LOG_RETENTION_DAYS = int(os.getenv('MAINTIDOC_LOG_RETENTION_DAYS', 30))
 os.environ.setdefault('MAINTIDOC_APPROVAL_SECRET', secrets.token_hex(32))
 os.environ.setdefault('MAINTIDOC_JWT_SECRET', secrets.token_hex(32))
 APPROVAL_SECRET = os.environ['MAINTIDOC_APPROVAL_SECRET']
+# Journaux : pseudonymisation des utilisateurs (secret à fixer dans .env pour des pseudonymes stables entre
+# redémarrages) et chiffrement optionnel des lignes (clé Fernet, générée par Fernet.generate_key()).
+os.environ.setdefault('MAINTIDOC_LOG_SECRET', secrets.token_hex(32))
+LOG_SECRET = os.environ['MAINTIDOC_LOG_SECRET']
+LOG_KEY = os.getenv('MAINTIDOC_LOG_KEY')
 JWT_SECRET = os.environ['MAINTIDOC_JWT_SECRET']
 
 # Version de l'application (tag Git), injectée par Docker Compose ; enregistrée avec chaque requête.

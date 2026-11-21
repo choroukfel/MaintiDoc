@@ -30,10 +30,10 @@ Streamlit (ui/app.py) ──HTTP──> FastAPI (api/main.py) : JWT, rôles, acc
 | Composant | Choix | Remarque |
 |---|---|---|
 | Modèle vision-langage | Qwen2.5-VL via Ollama | 3B sur le poste CPU, 7B recommandé sur GPU 24 Go |
-| Orchestration | LangGraph (état, budgets, `interrupt`) + LangChain (prompts) | |
+| Orchestration | LangGraph (état, budgets, `interrupt`) + LangChain : `BaseRetriever` (récupération), `PromptTemplate`, `PydanticOutputParser` (validation) | `maintidoc/lc.py` |
 | Recherche vectorielle | Qdrant (embarqué, ou serveur via `QDRANT_URL`) | serveur dans Docker Compose |
 | Embeddings texte | paraphrase-multilingual-MiniLM-L12-v2 | BGE-M3 trop lourd pour le poste (variable `MAINTIDOC_TEXT_EMBED`) |
-| Recherche visuelle | CLIP ViT-B/32 (photo → figures du corpus) | |
+| Recherche visuelle | CLIP ViT-B/32 (photo → figures) + encodeur de texte **CLIP multilingue** (question en français → figures ; désactivé par défaut, sans gain mesuré : `MAINTIDOC_TEXT_TO_IMAGE=1`) | images des figures retrouvées jointes au VLM |
 | Lexical | BM25 (codes d'alarme : F-05, AL-31…) | |
 | Fusion et reranking | RRF + cross-encoder mmarco-mMiniLMv2 | version fine-tunée comparée (`eval/finetune_reranker.py`) |
 | Extraction | PyMuPDF (texte, tableaux ligne par ligne, figures + légendes) + **OCR local EasyOCR** | pages scannées, texte des figures, photos |
@@ -83,6 +83,10 @@ pip install -r requirements.txt
 ollama pull qwen2.5vl:3b
 ```
 
+> **Manuel fourni avec le sujet** : `corpus/Manuel_Maintenance_SAN_Projet_Integrateur.pdf` (document `SAN-MAN-001`)
+> n'est pas publié dans le dépôt public, pas plus que le sujet du projet. Copiez-le dans `corpus/` avant l'indexation
+> pour reproduire les résultats ; sans lui, l'indexation l'ignore (avertissement) et les tests qui en dépendent sont sautés.
+
 ## Utilisation
 
 ```powershell
@@ -128,14 +132,15 @@ Chaque itération est marquée par un tag Git ; les images Docker portent le mê
 | `v2.0` | Itération 2 : 30 documents, OCR, PostgreSQL / MinIO, CI, Docker (91 % sur 160 scénarios) |
 | `v2.1` | Quotas par utilisateur, conservation des journaux |
 | `v3.0` | Itération 3 : consignes de sécurité, garde-fou, ticket exigeant un code, isolation réseau, registre de modèles |
+| `v3.1` | Version finale : supervision `/metrics`, LangChain, journaux pseudonymisés, CLIP multilingue, fine-tuning vérifié, 7B testé, GPU intégré (91 % sur 160 scénarios) |
 
 ```powershell
 # Déployer une version
-$env:MAINTIDOC_VERSION="v3.0"; docker compose up -d --build
+$env:MAINTIDOC_VERSION="v3.1"; docker compose up -d --build
 # Revenir à la version précédente en cas de régression (image déjà construite)
-$env:MAINTIDOC_VERSION="v2.1"; docker compose up -d api ui
+$env:MAINTIDOC_VERSION="v3.0"; docker compose up -d api ui
 # Image absente : la reconstruire depuis le tag
-git checkout v2.1; $env:MAINTIDOC_VERSION="v2.1"; docker compose build api ui; git checkout -
+git checkout v3.0; $env:MAINTIDOC_VERSION="v3.0"; docker compose build api ui; git checkout -
 ```
 La version en service est visible sur `GET /health` et enregistrée avec chaque requête (`data/logs/requests.jsonl`).
 L'index se reconstruit automatiquement si le corpus ou le découpage change (empreinte stockée avec l'index).
@@ -152,35 +157,41 @@ l'interface sont sur le réseau frontal, dont les ports ne sont publiés qu'en l
 ```powershell
 pytest                                   # 73 tests automatisés (LLM simulé, MCP réel en stdio, OCR réel)
 python eval/finetune_reranker.py         # fine-tuning du reranker (CPU, environ 30 min)
-python eval/run_eval.py retrieval        # Recall@5, nDCG@5, MRR@10 (5 configurations)
+python eval/run_eval.py retrieval        # Recall@5, nDCG@5, MRR@10 (7 configurations)
 python eval/run_eval.py e2e              # 160 scénarios avec le vrai modèle (plusieurs heures sur CPU)
 python eval/run_eval.py report           # rapport : docs/rapport_evaluation.md
 ```
 
 ## Résultats (détail dans [docs/rapport_evaluation.md](docs/rapport_evaluation.md))
 
-Mesurés sur un PC portable sans GPU (i5, 15 Go de RAM), avec Qwen2.5-VL 3B, corpus de 30 documents :
+Version finale (`v3.1`), mesurée sur un PC portable sans GPU dédié (i5, 15 Go de RAM), avec Qwen2.5-VL 3B sur le
+GPU intégré Intel, corpus de 30 documents :
 
-| Catégorie (160 scénarios) | Réussite |
-|---|---|
-| Questions documentaires textuelles (40) | 90 % |
-| Questions avec photo (30) | 80 % |
-| Consultation MCP (20) | 100 % |
-| Sources absentes ou contradictoires (20) | 85 % |
-| Contrôle d'accès et validation humaine (20) | 100 % |
-| Injections de prompt (20) | 100 % |
-| Corpus étendu et OCR (10) | 90 % |
-| **Total** | **91 % (146 / 160)** |
+| Catégorie (160 scénarios) | Itération 2 | Finale |
+|---|---|---|
+| Questions documentaires textuelles (40) | 90 % | 92 % |
+| Questions avec photo (30) | 80 % | 73 % |
+| Consultation MCP (20) | 100 % | 95 % |
+| Sources absentes ou contradictoires (20) | 85 % | 90 % |
+| Contrôle d'accès et validation humaine (20) | 100 % | 100 % |
+| Injections de prompt (20) | 100 % | 100 % |
+| Corpus étendu et OCR (10) | 90 % | 90 % |
+| **Total** | **91 % (146 / 160)** | **91 % (145 / 160)** |
 
 - **Sécurité** : 0 ticket créé sans approbation, 0 document interdit dans les preuves, 20 injections sur 20 neutralisées
   (documents, document scanné, photo, réponse MCP).
-- **Citations** : 100 % pointent vers une preuve réellement récupérée ; 78 % citent un élément de référence.
-- **Recherche** : le reranker fait passer le MRR@10 de 0,55 (hybride) à 0,75. Le reranker fine-tuné progresse sur ses
-  propres questions de test (0,66 → 0,82) mais pas sur les questions rédigées à la main (0,63) : le reranker
-  d'origine reste utilisé par défaut.
-- **Itération 3** : le cas « peut-on retirer deux disques à la fois ? », répondu « oui » à tort, est corrigé (consignes de sécurité indexées à part, garde-fou sur les interdictions) ; aucun ticket n'est plus proposé sans code d'alarme. Un juge LLM de fidélité a été testé : inefficace avec le modèle 3B, il est désactivé par défaut.
-- **Latence (CPU)** : médiane de 38 s (texte) et 77 s (photo) ; p95 de 64 s et 175 s.
-- **Itération 1** (12 documents, sans OCR) : 89 % sur les 150 scénarios du sujet, contre 91 % à l'itération 2.
+- **Citations** : 100 % pointent vers une preuve réellement récupérée ; environ 80 % citent un élément de référence.
+- **Erreur dangereuse corrigée** : « peut-on retirer deux disques à la fois ? », répondu « oui » à tort à l'itération 2,
+  est désormais correct (consignes de sécurité indexées à part, garde-fou déterministe sur les interdictions).
+- **Recherche** : le reranker fait passer le MRR@10 de 0,55 (hybride) à 0,73. Le reranker fine-tuné (1 500 exemples
+  vérifiés) progresse sur ses propres questions de test (0,66 → 0,81) mais pas sur les questions rédigées à la main
+  (0,59) : le reranker d'origine reste utilisé par défaut. La recherche texte → image (CLIP multilingue) n'apporte
+  aucun gain mesuré : elle est désactivée par défaut.
+- **Itération 4** : un premier passage final à 141 / 160 a révélé deux effets indésirables des ajouts (consignes de
+  sécurité qui évinçaient des preuves, image de figure qui trompait le modèle 3B), corrigés puis réévalués (145 / 160).
+- **Latence (GPU intégré)** : médiane de 22 s (texte) et 48 s (photo) ; p95 de 41 s et 64 s (contre 64 s et 175 s
+  sur processeur à l'itération 2).
+- **Itération 1** (12 documents, sans OCR) : 89 % sur les 150 scénarios du sujet ; 91 % en version finale.
 
 ## Sécurité (résumé)
 - **Secrets** : injectés par variables d'environnement (`.env`, ignoré par Git), jamais dans les prompts ni dans les journaux.
@@ -194,5 +205,9 @@ Mesurés sur un PC portable sans GPU (i5, 15 Go de RAM), avec Qwen2.5-VL 3B, cor
 - **Quotas par utilisateur** (API) : 30 requêtes par heure, 3 600 s de calcul par 24 h glissantes, une requête à la
   fois ; au-delà, réponse 429 avec le délai d'attente (`Retry-After`). Consommation visible sur `GET /quota`.
   Réglables par `MAINTIDOC_QUOTA_REQUESTS_PER_HOUR`, `MAINTIDOC_QUOTA_COMPUTE_SECONDS_PER_DAY`, `MAINTIDOC_QUOTA_MAX_CONCURRENT`.
-- **Journalisation** : métadonnées uniquement (`data/logs/requests.jsonl`), sans contenu brut ; entrées purgées
-  au-delà de 30 jours (`MAINTIDOC_LOG_RETENTION_DAYS`), au démarrage de l'API puis une fois par jour.
+- **Journalisation** : métadonnées uniquement (`data/logs/requests.jsonl`), sans contenu brut ; utilisateurs
+  **pseudonymisés** (HMAC) ; lignes **chiffrées** si `MAINTIDOC_LOG_KEY` est défini ; entrées purgées au-delà de
+  30 jours (`MAINTIDOC_LOG_RETENTION_DAYS`), au démarrage de l'API puis une fois par jour.
+- **Supervision** : `GET /metrics` (responsables uniquement) : requêtes par statut, refus d'accès, quotas dépassés,
+  injections, garde-fous, tickets, erreurs, latences médiane / p95, appels au modèle et à MCP. Format JSON, ou
+  Prometheus avec `?format=prometheus`.

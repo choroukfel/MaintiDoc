@@ -6,3 +6,8 @@ __pycache__/
 .ipynb_checkpoints/
 mlruns/
 .pytest_cache/
+# Documents fournis avec le sujet (droits de l'école) : conservés en local, non publiés
+/Projet IA G*.pdf
+/*volution des mod*.png
+/MaintiDoc_SAN_Qwen3_8_JSON_c.ipynb
+/corpus/Manuel_Maintenance_SAN_Projet_Integrateur.pdf

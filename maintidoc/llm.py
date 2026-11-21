@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import io
-import json
 import time
 from functools import lru_cache
 from typing import Any
@@ -10,7 +9,7 @@ from typing import Any
 import yaml
 from langchain_core.prompts import PromptTemplate
 from PIL import Image
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from . import config
 
@@ -62,10 +61,8 @@ class OllamaVLM:
             raise LLMUnavailable(f'Modèle indisponible : {type(ex).__name__}') from ex
         stats = {'prompt': prompt_name, 'seconds': round(time.time() - t, 2),
                  'prompt_tokens': res.prompt_eval_count, 'output_tokens': res.eval_count}
-        try:
-            return schema.model_validate(json.loads(res.message.content)), stats
-        except (json.JSONDecodeError, ValidationError) as ex:
-            raise ValueError(f'Sortie JSON invalide : {ex}') from ex
+        from .lc import parse_structured  # validation par PydanticOutputParser (LangChain)
+        return parse_structured(res.message.content, schema), stats
 
     def available(self) -> bool:
         try:

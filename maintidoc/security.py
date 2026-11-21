@@ -121,11 +121,11 @@ def purge_logs(retention_days: int | None = None, now: float | None = None) -> i
     cutoff = time.strftime('%Y-%m-%dT%H:%M:%S', time.localtime((now or time.time()) - days * 86400))
     kept, removed = [], 0
     for line in path.read_text(encoding='utf-8').splitlines():
-        try:
-            ts = json.loads(line).get('ts', '')
-        except json.JSONDecodeError:
-            removed += 1  # ligne illisible : supprimée
+        entry = _decode_log_line(line)
+        if entry is None:
+            removed += 1  # ligne illisible ou indéchiffrable : supprimée
             continue
+        ts = entry.get('ts', '')
         if ts >= cutoff:  # format ISO : l'ordre alphabétique est l'ordre chronologique
             kept.append(line)
         else:
@@ -137,14 +137,57 @@ def purge_logs(retention_days: int | None = None, now: float | None = None) -> i
     return removed
 
 
+def pseudonymize(user_id: str | None) -> str | None:
+    """Pseudonyme stable (HMAC) : permet de compter l'activité par utilisateur sans conserver son identifiant."""
+    if not user_id:
+        return user_id
+    digest = hmac.new(config.LOG_SECRET.encode(), str(user_id).encode(), hashlib.sha256).hexdigest()
+    return f'u_{digest[:12]}'
+
+
+def _fernet():
+    if not config.LOG_KEY:
+        return None
+    from cryptography.fernet import Fernet
+    return Fernet(config.LOG_KEY.encode())
+
+
+def _encode_log_line(entry: dict) -> str:
+    text = json.dumps(entry, ensure_ascii=False)
+    f = _fernet()
+    return 'ENC:' + f.encrypt(text.encode()).decode() if f else text
+
+
+def _decode_log_line(line: str) -> dict | None:
+    try:
+        if line.startswith('ENC:'):
+            f = _fernet()
+            if f is None:
+                return None
+            line = f.decrypt(line[4:].encode()).decode()
+        return json.loads(line)
+    except Exception:  # JSON invalide, clé absente ou différente
+        return None
+
+
+def read_logs() -> list[dict]:
+    """Relit le journal (en le déchiffrant si une clé est configurée)."""
+    path = config.LOG_DIR / 'requests.jsonl'
+    if not path.exists():
+        return []
+    return [e for e in map(_decode_log_line, path.read_text(encoding='utf-8').splitlines()) if e is not None]
+
+
 def log_event(event: dict) -> None:
     global _last_purge
     config.LOG_DIR.mkdir(parents=True, exist_ok=True)
     safe = {k: v for k, v in event.items() if k not in {'question', 'answer', 'image', 'description', 'evidence'}}
+    if 'user_id' in safe:  # minimisation : pseudonyme à la place de l'identifiant
+        safe['user_id'] = pseudonymize(safe['user_id'])
     safe['ts'] = time.strftime('%Y-%m-%dT%H:%M:%S')
     today = safe['ts'][:10]
     if _last_purge != today:  # purge au plus une fois par jour
         purge_logs()
         _last_purge = today
     with open(config.LOG_DIR / 'requests.jsonl', 'a', encoding='utf-8') as f:
-        f.write(json.dumps(safe, ensure_ascii=False) + '\n')
+        f.write(_encode_log_line(safe) + '\n')

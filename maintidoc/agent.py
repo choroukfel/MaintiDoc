@@ -22,7 +22,8 @@ import difflib
 
 from . import config, ocr, security
 from .llm import BudgetExceeded, LLMUnavailable, image_to_bytes
-from .retrieval import CLIP_CONFIDENT_MARGIN, Retriever, detect_models, load_image
+from .lc import MaintiDocRetriever
+from .retrieval import CLIP_CONFIDENT_MARGIN, Hit, Retriever, detect_models, load_image
 from .schemas import Answer, Citation, FaithfulnessCheck, LLMAnswer, LLMTicket, TicketDraft, VisualAnalysis
 from .vision import describe as describe_leds
 from .vision import detect_lit_leds
@@ -301,8 +302,17 @@ class Agent:
             parts += ANY_CODE_RE.findall(v.get('ocr_text') or '')  # codes lus par OCR (ex. F-05)
         query = ' '.join(parts)
         img = load_image(s['image']) if s.get('image') else None
-        hits = self.retriever.search(query, s['user']['groupes'], image=img,
-                                     models=[s['model']] if s.get('model') else None)
+        # Récupération via le retriever LangChain (droits appliqués avant la recherche)
+        docs = MaintiDocRetriever(retriever=self.retriever, groups=s['user']['groupes'], image=img,
+                                  models=[s['model']] if s.get('model') else None,
+                                  top_k=config.EVIDENCE_TOP_K + 2).invoke(query)
+        hits = [Hit(d.metadata['key'], self.retriever.elements[d.metadata['key']], d.metadata['rrf'],
+                    d.metadata['sources'], d.metadata['rerank']) for d in docs]
+        # Une consigne de sécurité retrouvée s'ajoute aux preuves sans prendre la place d'un passage, tableau ou
+        # figure (au plus une) : sinon elle évince l'élément qui répond à la question (rapport, itération 4).
+        safety = [h for h in hits if self.retriever.elements[h.key].get('securite')][:1]
+        kept = [h for h in hits if not self.retriever.elements[h.key].get('securite')][:config.EVIDENCE_TOP_K]
+        hits = [h for h in hits if h in kept or h in safety]
         mode = self.retriever.reranker_mode
         threshold = RERANK_THRESHOLD.get(mode)
         if s.get('image') and s.get('model'):
@@ -447,11 +457,27 @@ class Agent:
         if (s.get('flags') or {}).get('safety_evidence'):
             ctx.append("Une consigne de sécurité figure dans les preuves : ta réponse doit la respecter et la rappeler "
                        "si elle concerne l'action demandée.")
+        # Images pertinentes transmises au VLM (section 4.2, étape 5) : l'image originale des figures retrouvées.
+        images, image_keys = [], []
+        for e in s['evidence']:
+            if len(images) >= config.MAX_EVIDENCE_IMAGES:
+                break
+            path = self.retriever.elements[e['key']].get('image_path')
+            if e['type'] == 'figure' and path:
+                try:
+                    images.append(image_to_bytes(load_image(open(path, 'rb').read())))
+                    image_keys.append(e['eid'])
+                except (OSError, ValueError):
+                    continue
+        if image_keys:
+            ctx.append(f"L'image originale de la figure {', '.join(image_keys)} est jointe à ce message : tu peux "
+                       "t'en servir pour situer les voyants décrits.")
         variables = {'question': s['question'], 'context': '\n'.join(ctx), 'evidence': ev_text}
         llm_answer, stats, err = None, [], None
-        for attempt in range(2):
+        for _ in range(2):
             try:
-                a, st = self._llm(s, config.PROMPT_VERSIONS['answer'], variables, LLMAnswer)
+                a, st = self._llm(s, config.PROMPT_VERSIONS['answer'], variables, LLMAnswer, images=images or None)
+                st['images_jointes'] = image_keys
                 llm_answer = a.model_dump(); stats.append(st)
                 break
             except LLMUnavailable as ex:

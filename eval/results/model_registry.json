@@ -61,5 +61,68 @@
   },
   "statut": "évalué, non déployé (moins bon que le modèle d'origine sur les scénarios rédigés)",
   "emplacement": "data/models/reranker-maintidoc"
+ },
+ {
+  "nom": "reranker-maintidoc",
+  "version": "ft-20261120",
+  "date": "2026-11-20T17:22:07",
+  "modele_de_base": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+  "sha256_poids": "fdfdf3728e38d148d95582387a8f5ec7b1a46330ca250b0dff1d066cb9d1d638",
+  "sha256_donnees_entrainement": "a6470091a3556ecb093bd88e5bd3a078df75995b41c3d7522bcc0603d5ab11ba",
+  "commit_git": "e605a9c",
+  "triplets": {
+   "train": 1144,
+   "val": 84,
+   "test": 272
+  },
+  "separation": {
+   "test_docs": [
+    "SAN-ERR-011",
+    "UPS-ERR-031",
+    "UPS-MAN-030"
+   ],
+   "val_docs": [
+    "SAN-PSU-005",
+    "UPS-BAT-033",
+    "UPS-PROC-021"
+   ],
+   "exclus": [
+    "NOTE-EXT-099"
+   ]
+  },
+  "hyperparametres": {
+   "epochs": 2,
+   "learning_rate": 2e-05,
+   "batch": 16,
+   "max_length": 256
+  },
+  "mrr10_questions_generees": {
+   "base": {
+    "val": [
+     0.4954,
+     42
+    ],
+    "test": [
+     0.6577,
+     135
+    ]
+   },
+   "adapte": {
+    "val": [
+     0.6508,
+     42
+    ],
+    "test": [
+     0.8142,
+     135
+    ]
+   }
+  },
+  "mrr10_scenarios_rediges": {
+   "base": 0.7266,
+   "adapte": 0.5917
+  },
+  "statut": "évalué, non déployé (moins bon que le modèle d'origine sur les scénarios rédigés)",
+  "emplacement": "data/models/reranker-maintidoc"
  }
 ]

@@ -4,7 +4,6 @@ Toutes les figures sont générées par code : aucun visuel constructeur n'est u
 """
 from __future__ import annotations
 
-import random
 from pathlib import Path
 
 import numpy as np

@@ -1,0 +1,76 @@
+{
+ "n_scenarios_executes": 160,
+ "n_scenarios_total": 160,
+ "reussite_globale": "91 %",
+ "par_categorie": {
+  "texte": {
+   "n": 40,
+   "reussis": 36,
+   "taux": "90 %"
+  },
+  "image": {
+   "n": 30,
+   "reussis": 24,
+   "taux": "80 %"
+  },
+  "mcp": {
+   "n": 20,
+   "reussis": 20,
+   "taux": "100 %"
+  },
+  "absent_contradictoire": {
+   "n": 20,
+   "reussis": 17,
+   "taux": "85 %"
+  },
+  "acces_validation": {
+   "n": 20,
+   "reussis": 20,
+   "taux": "100 %"
+  },
+  "injection": {
+   "n": 20,
+   "reussis": 20,
+   "taux": "100 %"
+  },
+  "corpus_etendu": {
+   "n": 10,
+   "reussis": 9,
+   "taux": "90 %"
+  }
+ },
+ "citations": {
+  "reponses_affirmatives": 117,
+  "citations": 240,
+  "validite_structurelle": "100 %",
+  "citation_pertinente_vs_or": "76 %",
+  "n_evalue_vs_or": 80
+ },
+ "securite": {
+  "tickets_crees_sans_approbation": 0,
+  "fuites_documents_interdits": 0,
+  "fuites_contenu_interdit": 0,
+  "injections_refusees_ou_neutralisees": 20,
+  "injections_total": 20
+ },
+ "latence_s": {
+  "texte": {
+   "n": 94,
+   "mediane": 37.5,
+   "p95": 64.2
+  },
+  "photo": {
+   "n": 33,
+   "mediane": 76.7,
+   "p95": 174.8
+  },
+  "sans LLM": {
+   "n": 28,
+   "mediane": 0.0,
+   "p95": 3.3
+  }
+ },
+ "appels_llm_moyens": 1.05,
+ "max_appels_mcp": 3,
+ "max_appels_llm": 3
+}

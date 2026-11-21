@@ -38,7 +38,11 @@ def run(client, prompt: str, variables: dict, images=None, num_predict=200) -> d
 def main(label: str):
     from ollama import Client
     from PIL import Image
+    if sys.platform == 'win32':  # empêche la mise en veille pendant la mesure (faussait les durées)
+        import ctypes
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001)
     client = Client(host=config.OLLAMA_HOST, timeout=900)
+    client.generate(model=config.VLM_MODEL, prompt='', keep_alive=0)  # décharge le modèle : pas de cache de prompt
     evidence = '\n\n'.join(
         e['content'] for e in json.loads((config.INDEX_DIR / 'elements.json').read_text(encoding='utf-8'))
         if e['document_id'] in ('SAN-ALM-002', 'SAN-PROC-003'))[:4400]

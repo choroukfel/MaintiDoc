@@ -11,14 +11,15 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import jwt
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import Response
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import PlainTextResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from maintidoc import config, security  # noqa: E402
 from maintidoc.agent import USERS, Agent  # noqa: E402
+from maintidoc.monitoring import metrics  # noqa: E402
 from maintidoc.quotas import QuotaExceeded, QuotaManager  # noqa: E402
 
 @asynccontextmanager
@@ -29,6 +30,23 @@ async def lifespan(_app):
 
 app = FastAPI(title='MaintiDoc API', version='1.0', lifespan=lifespan)
 bearer = HTTPBearer(auto_error=False)
+
+
+@app.middleware('http')
+async def _count_http(request: Request, call_next):
+    """Supervision : compte chaque réponse HTTP par route et code (refus d'accès, quotas, erreurs)."""
+    try:
+        response = await call_next(request)
+    except Exception:
+        metrics.record_http(request.method, _route(request), 500)
+        raise
+    metrics.record_http(request.method, _route(request), response.status_code)
+    return response
+
+
+def _route(request: Request) -> str:
+    r = request.scope.get('route')
+    return getattr(r, 'path', None) or request.url.path
 _agent: Agent | None = None
 quotas = QuotaManager()
 
@@ -109,10 +127,14 @@ def ask(req: AskRequest, user: dict = Depends(current_user)):
             raise HTTPException(413, 'Image trop volumineuse')
     try:
         with quotas.slot(user['user_id']):
-            return get_agent().ask(user['user_id'], req.question, image)
+            t0 = time.perf_counter()
+            out = get_agent().ask(user['user_id'], req.question, image)
+            metrics.record_answer(out, time.perf_counter() - t0)
+            return out
     except QuotaExceeded as ex:
         raise HTTPException(429, str(ex), headers={'Retry-After': str(ex.retry_after)})
     except ValueError as ex:
+        metrics.record_error('requete_invalide')
         raise HTTPException(400, str(ex))
 
 
@@ -121,10 +143,22 @@ def my_quota(user: dict = Depends(current_user)):
     return quotas.usage(user['user_id'])
 
 
+@app.get('/metrics')
+def get_metrics(format: str = 'json', user: dict = Depends(current_user)):
+    """Supervision : réservée aux responsables (données agrégées, sans contenu)."""
+    if user['role'] != 'responsable':
+        raise HTTPException(403, 'Supervision réservée aux responsables')
+    if format == 'prometheus':
+        return PlainTextResponse(metrics.prometheus())
+    return metrics.snapshot()
+
+
 @app.post('/tickets/{thread_id}/decision')
 def decide(thread_id: str, req: DecisionRequest, user: dict = Depends(current_user)):
     try:
-        return get_agent().decide(thread_id, user['user_id'], req.approved, req.draft)
+        out = get_agent().decide(thread_id, user['user_id'], req.approved, req.draft)
+        metrics.record_ticket((out.get('ticket') or {}).get('status'))
+        return out
     except PermissionError as ex:
         raise HTTPException(403, str(ex))
     except ValueError as ex:

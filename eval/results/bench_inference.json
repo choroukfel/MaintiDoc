@@ -54,5 +54,33 @@
     "memoire_gpu_go": 2.76
    }
   ]
+ },
+ {
+  "etiquette": "gpu-intel-iris-xe-7b",
+  "date": "2026-11-20T15:34:37",
+  "modele": "qwen2.5vl:7b",
+  "reponse_texte": {
+   "prompt_tokens": 1809,
+   "tokens_generes": 108,
+   "lecture_tokens_par_s": 65.7,
+   "generation_tokens_par_s": 3.2,
+   "duree_totale_s": 62.1,
+   "chargement_s": 0.1
+  },
+  "analyse_photo": {
+   "prompt_tokens": 1322,
+   "tokens_generes": 106,
+   "lecture_tokens_par_s": 30.9,
+   "generation_tokens_par_s": 3.1,
+   "duree_totale_s": 82.5,
+   "chargement_s": 0.0
+  },
+  "memoire": [
+   {
+    "modele": "qwen2.5vl:7b",
+    "memoire_totale_go": 5.35,
+    "memoire_gpu_go": 5.35
+   }
+  ]
  }
 ]

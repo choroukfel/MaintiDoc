@@ -8,14 +8,17 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import logging
 import re
 from pathlib import Path
 
 import pymupdf
 from PIL import Image
 
-from . import config, ocr
+from . import ocr
 from .storage import get_storage
+
+log = logging.getLogger(__name__)
 
 HEADER_FOOTER = re.compile(
     r'(\|\s*R[ée]vision|^Page \d+$|^Diffusion :|document p[ée]dagogique fictif|Manuel pedagogique fictif)', re.I)
@@ -26,8 +29,18 @@ SAFETY_RE = re.compile(r'^(ATTENTION|Attention|AVERTISSEMENT|Interdits?)\b')
 
 
 def load_metadata() -> dict[str, dict]:
-    meta = json.loads(get_storage().read('metadata.json').decode('utf-8'))
-    return {m['document_id']: m for m in meta}
+    """Métadonnées des documents réellement présents dans le stockage.
+
+    Un document décrit mais absent (ex. le manuel fourni avec le sujet, non publié dans le dépôt public) est ignoré
+    avec un avertissement, au lieu de faire échouer toute l'indexation.
+    """
+    st = get_storage()
+    meta = json.loads(st.read('metadata.json').decode('utf-8'))
+    present = set(st.list())
+    missing = [m['document_id'] for m in meta if m['fichier'] not in present]
+    if missing:
+        log.warning('Documents absents du stockage, ignorés : %s', ', '.join(missing))
+    return {m['document_id']: m for m in meta if m['fichier'] in present}
 
 
 def corpus_hash() -> str:

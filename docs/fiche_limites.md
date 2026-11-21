@@ -1,6 +1,6 @@
 # MaintiDoc : fiche de limites et conditions d'utilisation
 
-*Livrable 5. Version 1.1 du 19 novembre 2026 (corpus de 30 documents, OCR).*
+*Livrable 5. Version 1.2 du 21 novembre 2026 (version finale v3.1 : corpus de 30 documents, OCR, GPU intégré).*
 
 ## Usages autorisés
 - Rechercher une information dans la documentation **autorisée** (manuels, procédures, bulletins) et obtenir une
@@ -36,7 +36,8 @@ Toute question sur un autre équipement conduit à une abstention (« aucune sou
 | Ticket déjà ouvert sur le même sujet | Pas de doublon proposé |
 
 ## Risques résiduels connus
-- **Lecture d'image imparfaite** : le modèle 3B utilisé sur le poste sans GPU confond parfois les étiquettes ;
+- **Lecture d'image imparfaite** : le modèle 3B utilisé sur le poste sans GPU dédié confond parfois les étiquettes
+  (73 % de réussite sur les questions avec photo, contre 92 % sur les questions textuelles) ;
   l'identification combine donc similarité visuelle (CLIP), codes lus à l'écran et noms de voyants, puis demande
   une clarification en cas de doute. Un modèle 7B sur GPU reste recommandé.
 - **Fidélité des réponses** : une réponse qui autorise une action interdite par une consigne de sécurité est bloquée par un garde-fou déterministe. Les autres erreurs de fond (mauvaise ligne d'un tableau, confusion fixe / clignotant) ne sont pas détectées automatiquement : le juge LLM testé, avec le modèle 3B, ne repère aucune erreur. Il est activable (`MAINTIDOC_FAITHFULNESS_CHECK=1`) avec un modèle plus grand.
@@ -52,13 +53,20 @@ Toute question sur un autre équipement conduit à une abstention (« aucune sou
   la création de ticket exige un jeton d'approbation signé côté serveur.
 - **Réseau** : dans Docker, les bases de données n'ont aucun accès sortant ; l'API garde un accès sortant (téléchargement
   des modèles, Ollama de l'hôte), qu'un pare-feu ou un proxy devrait restreindre en production.
+- **Données personnelles** : les journaux ne contiennent ni question ni réponse ; les utilisateurs y sont pseudonymisés (HMAC) et les lignes peuvent être chiffrées (`MAINTIDOC_LOG_KEY`). La base des tickets conserve les noms (fictifs) des auteurs et approbateurs, en clair.
+- **Modèle 7B** : testé sur le GPU intégré (5,35 Go en mémoire GPU) ; environ 2 fois plus lent que le 3B, sans gain de qualité mesuré sur 10 scénarios clés. Il n'est utile qu'avec un GPU dédié.
 - **Quotas** : appliqués en mémoire par l'unique processus d'API de la démonstration ; avec plusieurs instances,
   un stockage partagé des compteurs (Redis, PostgreSQL) serait nécessaire.
 - **Authentification de démonstration** : connexion par identifiant fictif sans mot de passe ; à remplacer par un
   fournisseur d'identité en production.
-- **Performance** : sur le processeur, une réponse prend environ 40 s (texte) à 80 s (photo). Avec le GPU intégré
-  Intel activé (`OLLAMA_IGPU_ENABLE=1`), l'analyse d'une photo descend à environ 32 s. L'objectif de 30 s (p95) reste
-  visé sur un GPU dédié de 24 Go.
+- **Performance** : avec le GPU intégré Intel activé (`OLLAMA_IGPU_ENABLE=1`), un scénario complet prend en médiane
+  22 s (texte) et 48 s (photo), p95 41 s et 64 s (sur processeur seul : p95 64 s et 175 s). L'objectif de 30 s (p95)
+  reste visé sur un GPU dédié de 24 Go.
+- **Variabilité** : le modèle 3B n'est pas parfaitement déterministe ; une même question peut être réussie à une
+  exécution et manquée à la suivante (1 à 2 scénarios sur 160 d'un passage à l'autre).
+- **Options évaluées mais désactivées** : image de la figure jointe au modèle (trompe le 3B), recherche texte → image
+  (sans gain), reranker fine-tuné (moins bon sur les questions rédigées à la main). Elles restent activables par
+  variable d'environnement pour un modèle plus grand.
 
 ## Conditions d'utilisation
 1. Vérifier les références citées avant toute intervention.

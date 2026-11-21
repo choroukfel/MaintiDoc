@@ -24,9 +24,11 @@ class FakeLLM:
         self.fail = fail
         self.faithfulness = faithfulness
         self.calls: list[str] = []
+        self.images_by_prompt: dict[str, int] = {}
 
     def structured(self, prompt, variables, schema, images=None, num_predict=None):
         self.calls.append(prompt)
+        self.images_by_prompt[prompt] = len(images or [])
         if self.fail:
             raise ValueError('sortie invalide simulée')
         if schema is VisualAnalysis:

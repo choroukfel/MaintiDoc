@@ -23,8 +23,8 @@ def p95(xs):
     return xs[min(len(xs) - 1, int(round(0.95 * (len(xs) - 1))))] if xs else None
 
 
-def load_runs():
-    f = RES / 'e2e_runs.jsonl'
+def load_runs(f: Path | None = None):
+    f = f or RES / 'e2e_runs.jsonl'
     rows = {}
     if f.exists():
         for line in f.read_text(encoding='utf-8').splitlines():
@@ -36,6 +36,8 @@ def load_runs():
 def build_report():
     scen = {s['id']: s for s in json.loads((ROOT / 'eval' / 'scenarios.json').read_text(encoding='utf-8'))}
     runs = load_runs()
+    it2_file = RES / 'iteration2_30docs' / 'e2e_runs.jsonl'
+    runs2 = load_runs(it2_file) if it2_file.exists() else runs  # itération 2 (archivée), base de comparaison
     retrieval = json.loads((RES / 'retrieval.json').read_text(encoding='utf-8')) if (RES / 'retrieval.json').exists() else None
     ft = json.loads((RES / 'finetuning.json').read_text(encoding='utf-8')) if (RES / 'finetuning.json').exists() else None
     by_cat = defaultdict(list)
@@ -100,8 +102,9 @@ def build_report():
          f"- **Jeu de test** : {len(scen)} scénarios (`eval/scenarios.json`) : les 150 de la section 10 du sujet, plus "
          "10 scénarios sur le corpus étendu (dont 2 accessibles uniquement par OCR et 1 injection dans un scan).",
          '- **Corpus** : 30 documents fictifs (2 familles d\'équipements), dont 2 documents scannés sans couche texte.',
-         '- **Matériel** : PC portable Intel Core i5-1145G7, 15 Go de RAM, **sans GPU**. Le modèle vision-langage '
-         'Qwen2.5-VL 3B (quantifié, Ollama) tourne sur le CPU.',
+         '- **Matériel** : PC portable Intel Core i5-1145G7, 15 Go de RAM, sans GPU dédié. Le modèle vision-langage '
+         'Qwen2.5-VL 3B (quantifié, Ollama) tourne sur le GPU intégré Intel Iris Xe (Vulkan) pour l\'évaluation '
+         'finale ; les itérations 1 et 2 ont tourné sur le processeur.',
          '- **Recherche** : embeddings `paraphrase-multilingual-MiniLM-L12-v2` (Qdrant embarqué), BM25, CLIP ViT-B/32, '
          'fusion RRF, reranker `mmarco-mMiniLMv2-L12` (origine puis adapté). OCR local EasyOCR (pages scannées, '
          'texte des figures, photos).',
@@ -118,6 +121,14 @@ def build_report():
               '| Entrée | n | Recall@5 | nDCG@5 | MRR@10 |', '|---|---|---|---|---|']
         for n, v in retrieval['texte_vs_multimodal'].items():
             L.append(f"| {n} | {v['n']} | {v['recall@5']:.3f} | {v['ndcg@5']:.3f} | {v['mrr@10']:.3f} |")
+        cf = retrieval['configurations']
+        if 'hybride + reranker origine + texte->image' in cf:
+            L += ['', f"**Recherche texte → image (encodeur CLIP multilingue)** : sans reranker, ajouter les figures "
+                      f"retrouvées à partir du texte de la question dégrade la fusion (MRR@10 "
+                      f"{cf['hybride RRF']['mrr@10']:.3f} → {cf['hybride RRF + texte->image (CLIP multilingue)']['mrr@10']:.3f}) ; "
+                      f"avec le reranker, l'effet est nul ({cf['hybride + reranker origine']['mrr@10']:.4f} → "
+                      f"{cf['hybride + reranker origine + texte->image']['mrr@10']:.4f}). Elle est donc implémentée et testée, "
+                      "mais désactivée par défaut (`MAINTIDOC_TEXT_TO_IMAGE=1`)."]
         L.append('')
     if ft:
         L += ['## 3. Fine-tuning ciblé du reranker', '',
@@ -137,17 +148,51 @@ def build_report():
         if (it1 / 'finetuning.json').exists() and retrieval:
             ft1 = json.loads((it1 / 'finetuning.json').read_text(encoding='utf-8'))
             r1 = json.loads((it1 / 'retrieval.json').read_text(encoding='utf-8'))['configurations']
-            r2 = retrieval['configurations']
-            L += ['**Deux itérations de fine-tuning** :', '',
+            it2 = RES / 'iteration2_30docs'
+            ft2 = json.loads((it2 / 'finetuning.json').read_text(encoding='utf-8')) if (it2 / 'finetuning.json').exists() else ft
+            r2 = json.loads((it2 / 'retrieval.json').read_text(encoding='utf-8'))['configurations'] \
+                if (it2 / 'retrieval.json').exists() else retrieval['configurations']
+            r3 = retrieval['configurations']
+
+            def row(label, data, f, r):
+                return (f"| {label} | {sum(f['triplets'].values())} triplets, {data} | "
+                        f"{f['mrr10_base']['test'][0]} → {f['mrr10_adapte']['test'][0]} | "
+                        f"{r['hybride + reranker origine']['mrr@10']:.3f} | {r['hybride + reranker adapté']['mrr@10']:.3f} |")
+            rows = [row('v1 (12 documents)', '3 gabarits fixes par ligne', ft1, r1),
+                    row('v2 (30 documents)', 'gabarits variés tirés au hasard', ft2, r2)]
+            if ft.get('verification'):
+                rows.append(row('v3 (30 documents)', 'gabarits variés, vérifiés automatiquement, plafond 1 500', ft, r3))
+            L += ['**Itérations de fine-tuning** :', '',
                   '| Itération | Données d\'entraînement | MRR@10 questions générées (test) origine → adapté | '
                   'MRR@10 scénarios rédigés : origine | MRR@10 scénarios rédigés : adapté |', '|---|---|---|---|---|',
-                  f"| v1 (corpus de 12 documents) | {sum(ft1['triplets'].values())} triplets, 3 gabarits fixes par ligne | "
-                  f"{ft1['mrr10_base']['test'][0]} → {ft1['mrr10_adapte']['test'][0]} | "
-                  f"{r1['hybride + reranker origine']['mrr@10']:.3f} | {r1['hybride + reranker adapté']['mrr@10']:.3f} |",
-                  f"| v2 (corpus de 30 documents) | {sum(ft['triplets'].values())} triplets, gabarits variés tirés au hasard | "
-                  f"{ft['mrr10_base']['test'][0]} → {ft['mrr10_adapte']['test'][0]} | "
-                  f"{r2['hybride + reranker origine']['mrr@10']:.3f} | {r2['hybride + reranker adapté']['mrr@10']:.3f} |",
-                  '']
+                  *rows, '']
+        if ft.get('verification'):
+            v = ft['verification']
+            L += [f"**Vérification automatique des exemples** (itération v3) : {v['generes']} triplets générés ; écartés : "
+                  f"{v['positif_sans_element']} positifs sans l'élément demandé, {v['negatif_ambigu']} négatifs ambigus "
+                  f"(faux négatifs probables), {v['doublons']} doublons ; {v['total_retenu']} retenus (plafond de 1 500 du sujet).", '']
+        fb, ff = RES / 'e2e_runs_reranker_base.jsonl', RES / 'e2e_runs_reranker_adapte.jsonl'
+        if ff.exists() and (fb.exists() or runs):
+            # origine : évaluation finale (reranker d'origine par défaut) si aucun fichier dédié
+            rb = {json.loads(ln)['id']: json.loads(ln) for ln in fb.read_text(encoding='utf-8').splitlines()} \
+                if fb.exists() else {r['id']: r for r in runs}
+            rf = {json.loads(ln)['id']: json.loads(ln) for ln in ff.read_text(encoding='utf-8').splitlines()}
+            ids = sorted(set(rb) & set(rf))
+            L += [f"**Qualité des réponses finales** (mesure demandée par la section 5), sur les {len(ids)} questions "
+                  "documentaires textuelles, même code et même modèle :", '',
+                  '| Reranker | Scénarios réussis |', '|---|---|',
+                  f"| Origine | {sum(rb[i]['passed'] for i in ids)} / {len(ids)} |",
+                  f"| Adapté | {sum(rf[i]['passed'] for i in ids)} / {len(ids)} |", '']
+            abst = [i for i in ids if not rf[i].get('llm_calls')]
+            rest = [i for i in ids if i not in abst]
+            if abst:
+                L += [f"Avec le reranker adapté, {len(abst)} questions légitimes déclenchent l'abstention sans appel au "
+                      f"modèle ({', '.join(abst)}) : il a appris à donner un score élevé aux **lignes de tableau**, le format "
+                      "de ses exemples synthétiques, et très bas aux passages rédigés, si bien que le seuil d'abstention "
+                      f"se déclenche. Sur les {len(rest)} autres questions, les deux rerankers font jeu égal "
+                      f"(adapté {sum(rf[i]['passed'] for i in rest)}, origine {sum(rb[i]['passed'] for i in rest)}). "
+                      "Le fine-tuning a donc surtout appris un biais de format, ce qui confirme la piste d'exemples "
+                      "d'entraînement plus variés (passages rédigés, questions réelles).", '']
         L += ["**Conclusion** : l'adaptation améliore nettement le classement sur des questions du même format que "
               "l'entraînement, y compris sur des documents jamais vus, mais ce gain **ne se transfère pas** aux questions "
               "rédigées à la main. La v2, aux gabarits plus variés, fait même moins bien que le modèle d'origine : des "
@@ -164,14 +209,25 @@ def build_report():
     s1f = RES / 'iteration1_12docs' / 'summary.json'
     if s1f.exists():
         s1 = json.loads(s1f.read_text(encoding='utf-8'))
-        base150 = [r for r in runs if r['category'] != 'corpus_etendu']
         p1 = {c: v['taux'] for c, v in s1['par_categorie'].items()}
-        L += ['', f"**Comparaison avec l'itération 1** (corpus de 12 documents, sans OCR) sur les 150 scénarios du sujet : "
-                  f"{s1['reussite_globale']} → {pct(sum(r['passed'] for r in base150), len(base150))} "
-                  f"({sum(r['passed'] for r in base150)} / {len(base150)}), alors que le corpus est 2,5 fois plus grand "
-                  f"(plus de passages concurrents). Par catégorie, itération 1 → 2 : "
-                  + ' ; '.join(f"{CAT_LABEL[c].lower()} {p1[c]} → {summary['par_categorie'][c]['taux']}"
-                               for c in p1 if c in summary['par_categorie']) + '.']
+
+        def taux(rs, c=None):
+            sub = [r for r in rs if (r['category'] == c if c else r['category'] != 'corpus_etendu')]
+            return pct(sum(r['passed'] for r in sub), len(sub)), sum(r['passed'] for r in sub), len(sub)
+        L += ['', f"**Évolution sur les 150 scénarios du sujet** : itération 1 (12 documents, sans OCR) "
+                  f"{s1['reussite_globale']} → itération 2 (30 documents, OCR) {taux(runs2)[0]} ({taux(runs2)[1]} / "
+                  f"{taux(runs2)[2]}) → version finale {taux(runs)[0]} ({taux(runs)[1]} / {taux(runs)[2]}). "
+                  f"Sur les 160 scénarios : itération 2 {pct(sum(r['passed'] for r in runs2), len(runs2))} → finale "
+                  f"{summary['reussite_globale']}.", '',
+              '| Catégorie | Itération 1 | Itération 2 | Finale |', '|---|---|---|---|']
+        for c, lab in CAT_LABEL.items():
+            if c in summary['par_categorie']:
+                L.append(f"| {lab} | {p1.get(c, '-')} | {taux(runs2, c)[0]} | {summary['par_categorie'][c]['taux']} |")
+        prev = {x['id']: x for x in runs2}
+        gained = sorted(r['id'] for r in runs if r['passed'] and r['id'] in prev and not prev[r['id']]['passed'])
+        lost = sorted(r['id'] for r in runs if not r['passed'] and r['id'] in prev and prev[r['id']]['passed'])
+        L += ['', f"Réussis en version finale mais pas à l'itération 2 : {', '.join(gained) or 'aucun'} ; "
+                  f"régressions : {', '.join(lost) or 'aucune'}."]
     c = summary['citations']
     L += ['', '### Indicateurs', '',
           f"- **Citations** : {c['citations']} citations dans {c['reponses_affirmatives']} réponses affirmatives ; validité "
@@ -183,7 +239,7 @@ def build_report():
           f"{sec['injections_refusees_ou_neutralisees']} / {sec['injections_total']}.",
           f"- **Budgets** : au plus {summary['max_appels_llm']} appels au modèle et {summary['max_appels_mcp']} appels MCP "
           f"par demande (limites : 6 et 3) ; {summary['appels_llm_moyens']} appels au modèle en moyenne.",
-          '- **Latence (CPU)** : ' + ' ; '.join(f"{k} : médiane {v['mediane']} s, p95 {v['p95']} s (n={v['n']})"
+          '- **Latence (GPU intégré, scénario complet)** : ' + ' ; '.join(f"{k} : médiane {v['mediane']} s, p95 {v['p95']} s (n={v['n']})"
                                              for k, v in summary['latence_s'].items()) + '.', '',
           '### Échecs et analyse', '', '| Scénario | Catégorie | Contrôles en échec | Statut obtenu |', '|---|---|---|---|']
     for r in sorted(runs, key=lambda x: x['id']):
@@ -206,8 +262,8 @@ def build_report():
                      f"{t['duree_totale_s']} | {ph['lecture_tokens_par_s']} | {ph['duree_totale_s']} | {gpu} |")
         igpu = RES / 'e2e_runs_igpu.jsonl'
         if igpu.exists():
-            rows = [json.loads(l) for l in igpu.read_text(encoding='utf-8').splitlines()]
-            cpu = {r['id']: r for r in runs}
+            rows = [json.loads(ln) for ln in igpu.read_text(encoding='utf-8').splitlines()]
+            cpu = {r['id']: r for r in runs2}
             ok_gpu = {r['id'] for r in rows if r['passed']}
             ok_cpu = {r['id'] for r in rows if r['id'] in cpu and cpu[r['id']]['passed']}
             L += ['', f"Contrôle de qualité sur le GPU intégré ({len(rows)} scénarios clés, code de l'itération 3) : "
@@ -215,14 +271,25 @@ def build_report():
                       f"Réussis seulement sur GPU : {', '.join(sorted(ok_gpu - ok_cpu)) or 'aucun'} ; réussis seulement sur "
                       f"processeur : {', '.join(sorted(ok_cpu - ok_gpu)) or 'aucun'}. Sur un échantillon aussi petit, la "
                       "qualité est jugée comparable."]
+        f7 = RES / 'e2e_runs_7b.jsonl'
+        if f7.exists():
+            r7 = [json.loads(ln) for ln in f7.read_text(encoding='utf-8').splitlines()]
+            r3 = {json.loads(ln)['id']: json.loads(ln) for ln in (RES / 'e2e_runs_igpu.jsonl').read_text(encoding='utf-8').splitlines()} \
+                if (RES / 'e2e_runs_igpu.jsonl').exists() else {}
+            L += ['', f"**Qwen2.5-VL 7B (modèle du sujet) sur le GPU intégré**, mêmes {len(r7)} scénarios clés : "
+                      f"{sum(r['passed'] for r in r7)} réussis (3B : {sum(r3[r['id']]['passed'] for r in r7 if r['id'] in r3)}), "
+                      f"durée médiane {statistics.median([r['seconds'] for r in r7]):.0f} s par scénario "
+                      f"(3B : {statistics.median([r3[r['id']]['seconds'] for r in r7 if r['id'] in r3]) if r3 else 0:.0f} s). "
+                      "Le 7B tient en mémoire GPU partagée (5,35 Go) mais génère environ 2,5 fois moins vite."]
         L += ['', "Le GPU intégré Intel Iris Xe (Vulkan, activé par `OLLAMA_IGPU_ENABLE=1`) lit le prompt et l'image 2,4 à "
                   "2,9 fois plus vite, mais génère un peu moins vite : le gain est surtout net sur les photos. L'objectif "
                   "de 30 s (p95) suppose toujours un GPU dédié.", '']
     # ---------------------------------------------------------- itération 3 : sécurité des réponses
     it3f, calf = RES / 'e2e_runs_iter3.jsonl', RES / 'faithfulness_calibration.json'
     if it3f.exists():
-        it3 = {json.loads(l)['id']: json.loads(l) for l in it3f.read_text(encoding='utf-8').splitlines()}
-        it2 = {r['id']: r for r in runs}
+        it3 = {json.loads(ln)['id']: json.loads(ln) for ln in it3f.read_text(encoding='utf-8').splitlines()}
+        it2 = {r['id']: r for r in runs2}
+        fin = {r['id']: r for r in runs}
         ids = [i for i in it3 if i in it2]
         L += ['', '### Itération 3 : sécurité des réponses (scénarios concernés)', '',
               "Deux corrections, puis réévaluation des scénarios qu'elles touchent (questions textuelles, corpus étendu, "
@@ -239,13 +306,13 @@ def build_report():
                   f"réponses fausses détectées : {len(cal['echecs_bloques'])} (TEX-10 jugée « {cal['TEX-10']['verdict']} »). "
                   f"Le juge 3B valide tout et ajoute {cal['secondes_moyennes']} s par réponse : il est désactivé par défaut "
                   "(`MAINTIDOC_FAITHFULNESS_CHECK=1` pour l'activer avec un modèle plus grand).", '']
-        L += ['| Catégorie | Scénarios | Itération 2 | Itération 3 |', '|---|---|---|---|']
+        L += ['| Catégorie | Scénarios | Itération 2 | Itération 3 | Finale |', '|---|---|---|---|---|']
         for c in sorted({it3[i]['category'] for i in ids}, key=lambda x: list(CAT_LABEL).index(x)):
             sub = [i for i in ids if it3[i]['category'] == c]
             L.append(f"| {CAT_LABEL[c]} | {len(sub)} | {sum(it2[i]['passed'] for i in sub)} | "
-                     f"{sum(it3[i]['passed'] for i in sub)} |")
+                     f"{sum(it3[i]['passed'] for i in sub)} | {sum(fin[i]['passed'] for i in sub if i in fin)} |")
         L.append(f"| **Total** | {len(ids)} | **{sum(it2[i]['passed'] for i in ids)}** | "
-                 f"**{sum(it3[i]['passed'] for i in ids)}** |")
+                 f"**{sum(it3[i]['passed'] for i in ids)}** | **{sum(fin[i]['passed'] for i in ids if i in fin)}** |")
         gained = sorted(i for i in ids if it3[i]['passed'] and not it2[i]['passed'])
         lost = sorted(i for i in ids if it2[i]['passed'] and not it3[i]['passed'])
         L += ['', f"Scénarios corrigés : {', '.join(gained) or 'aucun'} ; scénarios régressés : {', '.join(lost) or 'aucun'}."]
@@ -253,13 +320,36 @@ def build_report():
             L.append(f"TEX-10 (« Peut-on retirer deux disques en même temps ? ») : "
                      f"« {(it3['TEX-10'].get('result') or {}).get('answer', '')[:160]} »")
         L.append('')
+    # ---------------------------------------------------------- itération 4 : diagnostic du premier passage final
+    e1f = RES / 'e2e_runs_iter4_essai1.jsonl'
+    if e1f.exists() and runs:
+        e1 = {json.loads(ln)['id']: json.loads(ln) for ln in e1f.read_text(encoding='utf-8').splitlines()}
+        prev = {r['id']: r for r in runs2}
+        fin = {r['id']: r for r in runs}
+        lost1 = sorted(i for i in e1 if i in prev and prev[i]['passed'] and not e1[i]['passed'])
+        L += ['', '### Itération 4 : diagnostic et corrections de la version finale', '',
+              f"Un premier passage complet avec les ajouts de conformité (images des figures jointes au modèle, "
+              f"recherche texte → image, retriever LangChain) a donné **{sum(r['passed'] for r in e1.values())} / "
+              f"{len(e1)}**, contre {sum(r['passed'] for r in runs2)} / {len(runs2)} à l'itération 2. Régressions : "
+              f"{', '.join(lost1) or 'aucune'}, surtout sur les questions avec photo. Deux causes identifiées dans les "
+              "traces, puis corrigées :",
+              "- **Les consignes de sécurité occupaient une des 4 places de preuves** et évinçaient le tableau qui "
+              "répondait à la question (IMA-25, IMA-26) : une consigne retrouvée s'ajoute désormais aux 4 preuves "
+              "(au plus une) au lieu d'en prendre la place.",
+              "- **L'image de la figure jointe au modèle 3B l'induisait en erreur** (3 régressions, 1 gain ; ex. TEX-38 : "
+              "« 2 segments » au lieu de 3, alors que le tableau est correct) : désactivée par défaut "
+              "(`MAINTIDOC_MAX_EVIDENCE_IMAGES=1` pour l'activer avec un modèle plus grand).", '',
+              f"**Après correction : {sum(r['passed'] for r in runs)} / {len(runs)}.** Scénarios récupérés par rapport "
+              f"au premier passage : {', '.join(sorted(i for i in fin if fin[i]['passed'] and i in e1 and not e1[i]['passed'])) or 'aucun'} ; "
+              f"perdus : {', '.join(sorted(i for i in fin if not fin[i]['passed'] and i in e1 and e1[i]['passed'])) or 'aucun'}.", '']
     analysis = ROOT / 'eval' / 'analyse_echecs.md'
     if analysis.exists():
         L += ['', analysis.read_text(encoding='utf-8').strip()]
     L += ['', '## 5. Limites', '',
           "- L'absence d'échec sur un contrôle ne constitue pas une garantie générale de sécurité.",
-          '- Le petit modèle 3B, utilisé faute de GPU, lit imparfaitement les photos ; un modèle 7B sur GPU de 24 Go reste la cible.',
-          '- La latence mesurée sur CPU dépasse largement l\'objectif de 30 s (p95) fixé pour le matériel cible.',
+          '- Le petit modèle 3B, utilisé faute de GPU dédié, lit imparfaitement les photos ; le 7B, testé sur le GPU intégré, '
+          'n\'y apporte pas de gain mesurable et un GPU de 24 Go reste la cible.',
+          '- La latence mesurée sur le GPU intégré dépasse l\'objectif de 30 s (p95) fixé pour le matériel cible.',
           "- La pertinence des citations est mesurée par rapport aux éléments de référence (or), sans juge humain systématique.", '']
     (ROOT / 'docs' / 'rapport_evaluation.md').write_text('\n'.join(L), encoding='utf-8')
     print(json.dumps(summary, ensure_ascii=False, indent=1))

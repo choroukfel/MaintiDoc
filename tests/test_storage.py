@@ -1,5 +1,6 @@
 """Couche de stockage : dossier local et client S3/MinIO (simulé en mémoire, sans service réseau)."""
 import io
+import os
 import sys
 import types
 
@@ -61,3 +62,29 @@ def test_s3_storage_seeds_bucket_then_serves_documents(monkeypatch):
         assert len(FakeMinio.buckets['test-corpus']) == n_before
     finally:
         storage.get_storage.cache_clear()
+
+
+@pytest.mark.skipif(not os.getenv('MAINTIDOC_S3_TEST_ENDPOINT'), reason='serveur MinIO de test non configuré')
+def test_real_minio_seeds_and_serves_identical_documents(monkeypatch):
+    """Intégration avec un vrai serveur MinIO (MAINTIDOC_S3_TEST_ENDPOINT, _ACCESS_KEY, _SECRET_KEY)."""
+    import hashlib
+    import uuid
+
+    import pymupdf
+    monkeypatch.setenv('MAINTIDOC_S3_ENDPOINT', os.environ['MAINTIDOC_S3_TEST_ENDPOINT'])
+    monkeypatch.setenv('MAINTIDOC_S3_ACCESS_KEY', os.environ['MAINTIDOC_S3_TEST_ACCESS_KEY'])
+    monkeypatch.setenv('MAINTIDOC_S3_SECRET_KEY', os.environ['MAINTIDOC_S3_TEST_SECRET_KEY'])
+    monkeypatch.setenv('MAINTIDOC_S3_BUCKET', f'test-{uuid.uuid4().hex[:8]}')
+    st = storage.S3Storage()
+    try:
+        local = storage.LocalStorage()
+        assert st.list() == local.list()
+        for name in st.list():
+            assert hashlib.sha256(st.read(name)).digest() == hashlib.sha256(local.read(name)).digest()
+        pdf = next(n for n in st.list() if n.endswith('.pdf'))
+        assert pymupdf.open(stream=st.read(pdf), filetype='pdf').page_count >= 1
+        assert storage.S3Storage().list() == st.list()  # redémarrage : pas de ré-amorçage en double
+    finally:
+        for name in st.list():
+            st.client.remove_object(st.bucket, name)
+        st.client.remove_bucket(st.bucket)

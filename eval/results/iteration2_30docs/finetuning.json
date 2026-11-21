@@ -1,0 +1,105 @@
+{
+ "triplets": {
+  "train": 1213,
+  "val": 89,
+  "test": 282
+ },
+ "split": {
+  "test_docs": [
+   "SAN-ERR-011",
+   "UPS-ERR-031",
+   "UPS-MAN-030"
+  ],
+  "val_docs": [
+   "SAN-PSU-005",
+   "UPS-BAT-033",
+   "UPS-PROC-021"
+  ],
+  "exclus": [
+   "NOTE-EXT-099"
+  ]
+ },
+ "base_model": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+ "mrr10_base": {
+  "val": [
+   0.5448,
+   42
+  ],
+  "test": [
+   0.6565,
+   135
+  ]
+ },
+ "mrr10_adapte": {
+  "val": [
+   0.6984,
+   42
+  ],
+  "test": [
+   0.8198,
+   135
+  ]
+ },
+ "training": {
+  "pairs": 1773,
+  "steps": 222,
+  "seconds": 1664,
+  "loss_log": [
+   {
+    "step": 20,
+    "loss": 0.3903,
+    "sec": 168
+   },
+   {
+    "step": 40,
+    "loss": 0.3663,
+    "sec": 324
+   },
+   {
+    "step": 60,
+    "loss": 0.3629,
+    "sec": 478
+   },
+   {
+    "step": 80,
+    "loss": 0.2948,
+    "sec": 644
+   },
+   {
+    "step": 100,
+    "loss": 0.0358,
+    "sec": 792
+   },
+   {
+    "step": 120,
+    "loss": 0.0453,
+    "sec": 938
+   },
+   {
+    "step": 140,
+    "loss": 0.0604,
+    "sec": 1075
+   },
+   {
+    "step": 160,
+    "loss": 0.0968,
+    "sec": 1218
+   },
+   {
+    "step": 180,
+    "loss": 0.1822,
+    "sec": 1388
+   },
+   {
+    "step": 200,
+    "loss": 0.038,
+    "sec": 1522
+   },
+   {
+    "step": 220,
+    "loss": 0.0529,
+    "sec": 1651
+   }
+  ]
+ }
+}

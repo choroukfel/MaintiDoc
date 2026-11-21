@@ -1,8 +1,20 @@
 {
  "triplets": {
-  "train": 1213,
-  "val": 89,
-  "test": 282
+  "train": 1144,
+  "val": 84,
+  "test": 272
+ },
+ "verification": {
+  "generes": 1584,
+  "positif_sans_element": 0,
+  "negatif_ambigu": 83,
+  "doublons": 0,
+  "retenus": {
+   "train": 1144,
+   "val": 84,
+   "test": 272
+  },
+  "total_retenu": 1500
  },
  "split": {
   "test_docs": [
@@ -22,83 +34,78 @@
  "base_model": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
  "mrr10_base": {
   "val": [
-   0.5448,
+   0.4954,
    42
   ],
   "test": [
-   0.6565,
+   0.6577,
    135
   ]
  },
  "mrr10_adapte": {
   "val": [
-   0.6984,
+   0.6508,
    42
   ],
   "test": [
-   0.8198,
+   0.8142,
    135
   ]
  },
  "training": {
-  "pairs": 1773,
-  "steps": 222,
-  "seconds": 1664,
+  "pairs": 1717,
+  "steps": 216,
+  "seconds": 1358,
   "loss_log": [
    {
     "step": 20,
-    "loss": 0.3903,
-    "sec": 168
+    "loss": 0.7471,
+    "sec": 149
    },
    {
     "step": 40,
-    "loss": 0.3663,
-    "sec": 324
+    "loss": 0.1147,
+    "sec": 319
    },
    {
     "step": 60,
-    "loss": 0.3629,
-    "sec": 478
+    "loss": 0.1513,
+    "sec": 490
    },
    {
     "step": 80,
-    "loss": 0.2948,
-    "sec": 644
+    "loss": 0.2752,
+    "sec": 600
    },
    {
     "step": 100,
-    "loss": 0.0358,
-    "sec": 792
+    "loss": 0.1959,
+    "sec": 691
    },
    {
     "step": 120,
-    "loss": 0.0453,
-    "sec": 938
+    "loss": 0.0679,
+    "sec": 822
    },
    {
     "step": 140,
-    "loss": 0.0604,
-    "sec": 1075
+    "loss": 0.0044,
+    "sec": 946
    },
    {
     "step": 160,
-    "loss": 0.0968,
-    "sec": 1218
+    "loss": 0.0296,
+    "sec": 1052
    },
    {
     "step": 180,
-    "loss": 0.1822,
-    "sec": 1388
+    "loss": 0.0348,
+    "sec": 1168
    },
    {
     "step": 200,
-    "loss": 0.038,
-    "sec": 1522
-   },
-   {
-    "step": 220,
-    "loss": 0.0529,
-    "sec": 1651
+    "loss": 0.0088,
+    "sec": 1282
    }
   ]
  }

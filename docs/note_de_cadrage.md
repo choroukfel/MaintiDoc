@@ -68,10 +68,10 @@ Données associées :
 | Couche | Choix réalisé |
 |---|---|
 | Interface et API | Streamlit, FastAPI (authentification JWT, rôles, contrôle d'accès aux pages) |
-| Orchestration | LangGraph (état, budgets, interruption pour validation humaine) ; LangChain pour les prompts |
+| Orchestration | LangGraph (état, budgets, interruption pour validation humaine) ; LangChain pour la récupération (`BaseRetriever`), les prompts (`PromptTemplate`) et la validation des sorties (`PydanticOutputParser`) |
 | Extraction | PyMuPDF (texte, tableaux, figures) et **OCR local EasyOCR** (pages scannées, texte des figures, photos) |
-| Recherche | Qdrant ; MiniLM multilingue (texte ; BGE-M3 sur une machine plus puissante) ; BM25 ; CLIP (images) ; fusion RRF ; reranker multilingue (version fine-tunée évaluée) |
-| Modèle vision-langage | Qwen2.5-VL à poids ouverts, servi par Ollama (3B sur le poste CPU, 7B recommandé sur GPU) |
+| Recherche | Qdrant ; MiniLM multilingue (texte ; BGE-M3 sur une machine plus puissante) ; BM25 ; CLIP (photo → figures) et encodeur de texte CLIP multilingue (question → figures) ; fusion RRF ; reranker multilingue (version fine-tunée évaluée) |
+| Modèle vision-langage | Qwen2.5-VL à poids ouverts, servi par Ollama sur le GPU intégré (3B par défaut ; 7B testé, recommandé sur GPU dédié) ; images des figures retrouvées jointes à la génération |
 | Outils | Serveur MCP de maintenance (SQLite en développement, PostgreSQL en déploiement) |
 | Stockage et suivi | PostgreSQL (métadonnées MCP), MinIO (documents), MLflow ; Docker Compose ; CI GitHub Actions |
 
