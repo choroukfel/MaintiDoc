@@ -64,12 +64,12 @@
  },
  {
   "nom": "reranker-maintidoc",
-  "version": "ft-20261120",
-  "date": "2026-11-20T17:22:07",
+  "version": "ft-20261121",
+  "date": "2026-11-21T02:12:10",
   "modele_de_base": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
   "sha256_poids": "fdfdf3728e38d148d95582387a8f5ec7b1a46330ca250b0dff1d066cb9d1d638",
   "sha256_donnees_entrainement": "a6470091a3556ecb093bd88e5bd3a078df75995b41c3d7522bcc0603d5ab11ba",
-  "commit_git": "e605a9c",
+  "commit_git": "c0c9ae5",
   "triplets": {
    "train": 1144,
    "val": 84,
@@ -119,8 +119,8 @@
    }
   },
   "mrr10_scenarios_rediges": {
-   "base": 0.7266,
-   "adapte": 0.5917
+   "base": 0.7263,
+   "adapte": 0.5907
   },
   "statut": "évalué, non déployé (moins bon que le modèle d'origine sur les scénarios rédigés)",
   "emplacement": "data/models/reranker-maintidoc"

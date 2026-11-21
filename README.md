@@ -85,7 +85,7 @@ ollama pull qwen2.5vl:3b
 
 > **Manuel fourni avec le sujet** : `corpus/Manuel_Maintenance_SAN_Projet_Integrateur.pdf` (document `SAN-MAN-001`)
 > n'est pas publié dans le dépôt public, pas plus que le sujet du projet. Copiez-le dans `corpus/` avant l'indexation
-> pour reproduire les résultats ; sans lui, l'indexation l'ignore (avertissement) et les tests qui en dépendent sont sautés.
+> pour reproduire les résultats d'évaluation ; sans lui, l'indexation l'ignore (avertissement) et les tests automatisés passent.
 
 ## Utilisation
 

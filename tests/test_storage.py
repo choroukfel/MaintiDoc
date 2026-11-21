@@ -1,5 +1,6 @@
 """Couche de stockage : dossier local et client S3/MinIO (simulé en mémoire, sans service réseau)."""
 import io
+import json
 import os
 import sys
 import types
@@ -12,7 +13,10 @@ from maintidoc import config, storage
 def test_local_storage_reads_corpus_and_blocks_traversal():
     st = storage.LocalStorage()
     names = st.list()
-    assert 'metadata.json' in names and sum(n.endswith('.pdf') for n in names) == 30
+    described = {m['fichier'] for m in json.loads(st.read('metadata.json'))}
+    # 30 documents décrits ; le manuel fourni avec le sujet peut être absent (dépôt public)
+    assert 'metadata.json' in names and {n for n in names if n.endswith('.pdf')} <= described
+    assert len(described) == 30 and len(described - set(names)) <= 1
     assert st.read('metadata.json').startswith(b'[')
     with pytest.raises(ValueError):
         st.read('../README.md')
