@@ -43,8 +43,13 @@ with st.sidebar:
             st.stop()
     approver = st.selectbox('Approbateur des tickets', list(USERS), index=2, format_func=USERS.get)
     with st.expander('Documents autorisés'):
-        for d in api('GET', '/documents', st.session_state['token']).json():
-            st.write(f"**{d['document_id']}** — {d['titre']}")
+        docs = api('GET', '/documents', st.session_state['token'])
+        if docs.status_code == 200:
+            for d in docs.json():
+                st.write(f"**{d['document_id']}** — {d['titre']}")
+        else:
+            st.error(f"L'API ne peut pas charger les documents (erreur {docs.status_code}). Regardez le terminal "
+                     "uvicorn : en lancement local, la variable MAINTIDOC_S3_ENDPOINT ne doit pas être définie.")
 
 question = st.text_area('Question', 'Voici une photo du panneau du SAN-LAB-2000-01. Que signifie ce voyant orange ? '
                                     'Consulte les dernières interventions et prépare un ticket si nécessaire.', height=90)
