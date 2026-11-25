@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import re
 import threading
 import unicodedata
@@ -17,6 +18,8 @@ from PIL import Image
 
 from . import config, ingestion
 from . import ocr as ocr_mod
+
+log = logging.getLogger(__name__)
 
 MODEL_PATTERNS = [
     (re.compile(r'SAN[\s-]*LAB[\s-]*2000', re.I), 'SAN-LAB 2000'),
@@ -188,9 +191,22 @@ class Retriever:
         self.version = state['version']
         self.elements = {e['key']: e for e in json.loads((self.index_dir / 'elements.json').read_text(encoding='utf-8'))}
         self.units = json.loads((self.index_dir / 'units.json').read_text(encoding='utf-8'))
-        self.metadata = ingestion.load_metadata()
+        self.metadata = self._load_catalog()
         from rank_bm25 import BM25Okapi
         self._bm25 = BM25Okapi([tokenize(u['text']) for u in self.units])
+
+    def _load_catalog(self) -> dict[str, dict]:
+        """Métadonnées documentaires synchronisées dans PostgreSQL (ou SQLite), puis relues depuis la base."""
+        meta = ingestion.load_metadata()
+        try:
+            from .catalog import Catalog
+            self.catalog = Catalog()
+            self.catalog.sync(meta, list(self.elements.values()), self.version)
+            return self.catalog.documents()
+        except Exception as ex:  # base indisponible : on continue avec les métadonnées du corpus
+            log.warning('Catalogue des métadonnées indisponible (%s) : lecture de metadata.json', ex)
+            self.catalog = None
+            return meta
 
     # ------------------------------------------------------------------ accès
     def allowed_documents(self, groups: list[str]) -> set[str]:

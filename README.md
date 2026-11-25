@@ -38,6 +38,7 @@ Streamlit (ui/app.py) ──HTTP──> FastAPI (api/main.py) : JWT, rôles, acc
 | Fusion et reranking | RRF + cross-encoder mmarco-mMiniLMv2 | version fine-tunée comparée (`eval/finetune_reranker.py`) |
 | Extraction | PyMuPDF (texte, tableaux ligne par ligne, figures + légendes) + **OCR local EasyOCR** | pages scannées, texte des figures, photos |
 | Outils | Serveur MCP (SDK `mcp` 2.x, stdio) | base SQLite (développement) ou **PostgreSQL** (`MAINTIDOC_DB_URL`) |
+| Métadonnées documentaires | **PostgreSQL** (`MAINTIDOC_DB_URL`) ou SQLite : tables `documents` et `elements` (`maintidoc/catalog.py`) | synchronisées à chaque chargement de l'index ; les droits d'accès y sont relus |
 | Stockage des documents | dossier `corpus/` ou **MinIO** (`MAINTIDOC_S3_ENDPOINT`) | MinIO amorcé automatiquement au premier démarrage |
 | API / UI | FastAPI + Streamlit | |
 | Suivi / déploiement | MLflow (`mlruns/`) + Docker Compose + CI GitHub Actions | `.github/workflows/ci.yml` |
@@ -133,14 +134,15 @@ Chaque itération est marquée par un tag Git ; les images Docker portent le mê
 | `v2.1` | Quotas par utilisateur, conservation des journaux |
 | `v3.0` | Itération 3 : consignes de sécurité, garde-fou, ticket exigeant un code, isolation réseau, registre de modèles |
 | `v3.1` | Version finale : supervision `/metrics`, LangChain, journaux pseudonymisés, CLIP multilingue, fine-tuning vérifié, 7B testé, GPU intégré (91 % sur 160 scénarios) |
+| `v3.2` | Métadonnées documentaires dans PostgreSQL (droits relus depuis la base), budget de temps de 120 s, préchargement du modèle |
 
 ```powershell
 # Déployer une version
-$env:MAINTIDOC_VERSION="v3.1"; docker compose up -d --build
+$env:MAINTIDOC_VERSION="v3.2"; docker compose up -d --build
 # Revenir à la version précédente en cas de régression (image déjà construite)
-$env:MAINTIDOC_VERSION="v3.0"; docker compose up -d api ui
+$env:MAINTIDOC_VERSION="v3.1"; docker compose up -d api ui
 # Image absente : la reconstruire depuis le tag
-git checkout v3.0; $env:MAINTIDOC_VERSION="v3.0"; docker compose build api ui; git checkout -
+git checkout v3.1; $env:MAINTIDOC_VERSION="v3.1"; docker compose build api ui; git checkout -
 ```
 La version en service est visible sur `GET /health` et enregistrée avec chaque requête (`data/logs/requests.jsonl`).
 L'index se reconstruit automatiquement si le corpus ou le découpage change (empreinte stockée avec l'index).
@@ -200,8 +202,9 @@ GPU intégré Intel, corpus de 30 documents :
   l'approbateur et au contenu exact, et une clé d'idempotence.
 - **Injections** : documents, OCR et réponses MCP traités comme des données. Les phrases suspectes sont neutralisées,
   et une demande d'utilisateur contenant une injection est refusée.
-- **Budgets** (appliqués par le code) : 3 appels MCP, 6 appels au modèle, temps maximal configurable, taille des
-  images et du contexte limitée.
+- **Budgets** (appliqués par le code) : 3 appels MCP, 6 appels au modèle, 120 s de traitement automatique par demande
+  (`MAINTIDOC_MAX_SECONDS` ; le sujet vise 60 s sur un GPU de 24 Go), taille des images et du contexte limitée. Le modèle
+  est préchargé au démarrage de l'API.
 - **Quotas par utilisateur** (API) : 30 requêtes par heure, 3 600 s de calcul par 24 h glissantes, une requête à la
   fois ; au-delà, réponse 429 avec le délai d'attente (`Retry-After`). Consommation visible sur `GET /quota`.
   Réglables par `MAINTIDOC_QUOTA_REQUESTS_PER_HOUR`, `MAINTIDOC_QUOTA_COMPUTE_SECONDS_PER_DAY`, `MAINTIDOC_QUOTA_MAX_CONCURRENT`.

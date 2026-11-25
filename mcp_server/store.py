@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import os
-import sqlite3
 import sys
 import time
 from pathlib import Path
@@ -15,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from maintidoc import config, security  # noqa: E402
+from maintidoc.db import Database  # noqa: E402
 
 DATA = Path(__file__).resolve().parent / 'data'
 SCHEMA = [
@@ -34,46 +34,11 @@ def _load(name):
     return json.loads((DATA / name).read_text(encoding='utf-8'))
 
 
-class _DB:
-    """Adaptateur minimal SQLite / PostgreSQL (requêtes écrites avec « ? »)."""
-
-    def __init__(self, url_or_path: str):
-        self.pg = url_or_path.startswith('postgresql://')
-        if self.pg:
-            import psycopg
-            from psycopg.rows import dict_row
-            self.conn = psycopg.connect(url_or_path, row_factory=dict_row)
-        else:
-            Path(url_or_path).parent.mkdir(parents=True, exist_ok=True)
-            self.conn = sqlite3.connect(url_or_path, check_same_thread=False)
-            self.conn.row_factory = sqlite3.Row
-
-    def _sql(self, sql: str) -> str:
-        return sql.replace('?', '%s') if self.pg else sql
-
-    def query(self, sql: str, params=()) -> list[dict]:
-        cur = self.conn.execute(self._sql(sql), params)
-        return [dict(r) for r in cur.fetchall()]
-
-    def run(self, sql: str, params=()) -> None:
-        self.conn.execute(self._sql(sql), params)
-
-    def commit(self) -> None:
-        self.conn.commit()
-
-    def has_tables(self) -> bool:
-        if self.pg:
-            rows = self.query("SELECT table_name FROM information_schema.tables WHERE table_name='tickets'")
-        else:
-            rows = self.query("SELECT name FROM sqlite_master WHERE type='table' AND name='tickets'")
-        return bool(rows)
-
-
 class MaintenanceStore:
     def __init__(self, db_path: Path | str | None = None):
         target = str(db_path) if db_path else (os.getenv('MAINTIDOC_DB_URL') or str(config.MCP_DB))
-        self.db = _DB(target)
-        if not self.db.has_tables():
+        self.db = Database(target)
+        if not self.db.has_table('tickets'):
             self._init()
         self.users = {u['user_id']: u for u in _load('utilisateurs.json')}
         self.equipment = {e['equipment_id']: e for e in _load('equipements.json')}

@@ -1,6 +1,6 @@
 # MaintiDoc : fiche de limites et conditions d'utilisation
 
-*Livrable 5. Version 1.2 du 21 novembre 2026 (version finale v3.1 : corpus de 30 documents, OCR, GPU intégré).*
+*Livrable 5. Version 1.3 du 25 novembre 2026 (version finale v3.1 : corpus de 30 documents, OCR, GPU intégré).*
 
 ## Usages autorisés
 - Rechercher une information dans la documentation **autorisée** (manuels, procédures, bulletins) et obtenir une
@@ -62,6 +62,8 @@ Toute question sur un autre équipement conduit à une abstention (« aucune sou
 - **Performance** : avec le GPU intégré Intel activé (`OLLAMA_IGPU_ENABLE=1`), un scénario complet prend en médiane
   22 s (texte) et 48 s (photo), p95 41 s et 64 s (sur processeur seul : p95 64 s et 175 s). L'objectif de 30 s (p95)
   reste visé sur un GPU dédié de 24 Go.
+- **Budget de temps** : 120 s de traitement automatique par demande au lieu des 60 s du sujet, qui supposent un GPU
+  dédié. Au-delà, l'agent s'arrête et le signale. Sur processeur seul, relever la limite (`MAINTIDOC_MAX_SECONDS=300`).
 - **Variabilité** : le modèle 3B n'est pas parfaitement déterministe ; une même question peut être réussie à une
   exécution et manquée à la suivante (1 à 2 scénarios sur 160 d'un passage à l'autre).
 - **Options évaluées mais désactivées** : image de la figure jointe au modèle (trompe le 3B), recherche texte → image

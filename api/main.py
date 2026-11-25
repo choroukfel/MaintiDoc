@@ -5,7 +5,10 @@ Lancement : uvicorn api.main:app --port 8000
 from __future__ import annotations
 
 import base64
+import logging
+import os
 import sys
+import threading
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -22,10 +25,24 @@ from maintidoc.agent import USERS, Agent  # noqa: E402
 from maintidoc.monitoring import metrics  # noqa: E402
 from maintidoc.quotas import QuotaExceeded, QuotaManager  # noqa: E402
 
+log = logging.getLogger(__name__)
+
 @asynccontextmanager
 async def lifespan(_app):
     security.purge_logs()  # durée de conservation des journaux (MAINTIDOC_LOG_RETENTION_DAYS)
+    if os.getenv('MAINTIDOC_WARMUP', '1') == '1':
+        threading.Thread(target=_warm_up, daemon=True).start()
     yield
+
+
+def _warm_up() -> None:
+    """Préchargement en arrière-plan : index, modèles de recherche et modèle vision-langage."""
+    try:
+        llm = get_agent().llm
+        if hasattr(llm, 'warm_up'):
+            llm.warm_up()
+    except Exception as ex:  # Ollama absent au démarrage : la première demande chargera le modèle
+        log.warning('Préchargement du modèle impossible : %s', ex)
 
 
 app = FastAPI(title='MaintiDoc API', version='1.0', lifespan=lifespan)
@@ -56,12 +73,16 @@ def set_quotas(manager: QuotaManager) -> None:  # utilisé par les tests
     quotas = manager
 
 
+_agent_lock = threading.Lock()
+
+
 def get_agent() -> Agent:
     global _agent
-    if _agent is None:
-        from maintidoc.llm import OllamaVLM
-        from maintidoc.retrieval import get_retriever
-        _agent = Agent(get_retriever(), OllamaVLM())
+    with _agent_lock:  # le préchargement et une première requête peuvent arriver en même temps
+        if _agent is None:
+            from maintidoc.llm import OllamaVLM
+            from maintidoc.retrieval import get_retriever
+            _agent = Agent(get_retriever(), OllamaVLM())
     return _agent
 
 

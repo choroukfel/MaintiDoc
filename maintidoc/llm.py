@@ -45,6 +45,10 @@ class OllamaVLM:
         self.model = model
         self.client = Client(host=host, timeout=config.LLM_TIMEOUT)
 
+    def warm_up(self) -> None:
+        """Charge le modèle en mémoire (au démarrage de l'API) pour que la première demande ne paie pas ce délai."""
+        self.client.generate(model=self.model, prompt='', keep_alive='15m')
+
     def structured(self, prompt_name: str, variables: dict[str, Any], schema: type[BaseModel],
                    images: list[bytes] | None = None, num_predict: int = config.NUM_PREDICT) -> tuple[BaseModel, dict]:
         p = load_prompt(prompt_name)

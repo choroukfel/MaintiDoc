@@ -4,8 +4,8 @@
 # Les secrets sont lus dans un fichier .env non versionné : voir .env.example.
 #
 # Versions et retour en arrière : les images de l'application sont étiquetées par MAINTIDOC_VERSION (tag Git).
-#   MAINTIDOC_VERSION=v3.0 docker compose up -d --build   # construit et lance la version courante
-#   MAINTIDOC_VERSION=v2.1 docker compose up -d           # revient à une image déjà construite (voir README)
+#   MAINTIDOC_VERSION=v3.2 docker compose up -d --build   # construit et lance la version courante
+#   MAINTIDOC_VERSION=v3.1 docker compose up -d           # revient à une image déjà construite (voir README)
 #
 # Réseaux : les bases de données (Qdrant, PostgreSQL, MinIO) sont sur un réseau INTERNE, sans accès à Internet ni
 # au réseau de l'hôte ; seuls l'API et l'interface sont sur le réseau « frontal » qui publie les ports (en local).
@@ -70,7 +70,7 @@ services:
       MAINTIDOC_S3_ACCESS_KEY: ${MINIO_ROOT_USER}
       MAINTIDOC_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MAINTIDOC_VLM: ${MAINTIDOC_VLM:-qwen2.5vl:3b}
-      MAINTIDOC_MAX_SECONDS: ${MAINTIDOC_MAX_SECONDS:-600}
+      MAINTIDOC_MAX_SECONDS: ${MAINTIDOC_MAX_SECONDS:-120}
       MAINTIDOC_VERSION: ${MAINTIDOC_VERSION:-dev}
     extra_hosts: ["host.docker.internal:host-gateway"]
     volumes: [app_data:/app/data]

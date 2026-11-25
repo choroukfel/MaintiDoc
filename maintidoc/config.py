@@ -13,6 +13,8 @@ LOG_DIR = DATA_DIR / 'logs'
 MODELS_DIR = DATA_DIR / 'models'
 MCP_DATA_DIR = ROOT / 'mcp_server' / 'data'
 MCP_DB = Path(os.getenv('MAINTIDOC_MCP_DB', DATA_DIR / 'mcp' / 'maintenance.db'))
+# Catalogue des métadonnées documentaires (SQLite hors Docker ; PostgreSQL si MAINTIDOC_DB_URL est défini)
+CATALOG_DB = Path(os.getenv('MAINTIDOC_CATALOG_DB', DATA_DIR / 'catalog.db'))
 PROMPTS_DIR = ROOT / 'prompts'
 
 # ------------------------------------------------------------------ modèles
@@ -36,8 +38,10 @@ QDRANT_URL = os.getenv('QDRANT_URL')  # None => Qdrant embarqué (fichiers locau
 # ------------------------------------------------------------------ budgets (appliqués par le code)
 MAX_MCP_CALLS = int(os.getenv('MAINTIDOC_MAX_MCP_CALLS', 3))
 MAX_LLM_CALLS = int(os.getenv('MAINTIDOC_MAX_LLM_CALLS', 6))
-# Le sujet vise 60 s sur un GPU 24 Go ; sur le poste CPU de développement, la limite est relevée.
-MAX_SECONDS = float(os.getenv('MAINTIDOC_MAX_SECONDS', 600))
+# Le sujet vise 60 s sur un GPU 24 Go. Sur le poste de développement (GPU intégré Intel), une demande complète prend
+# au plus 76 s hors démarrage (évaluation finale, 160 scénarios) : limite fixée à 120 s. Le modèle est préchargé au
+# démarrage de l'API pour que la première demande ne paie pas son chargement. Sur processeur seul : 300 s conseillé.
+MAX_SECONDS = float(os.getenv('MAINTIDOC_MAX_SECONDS', 120))
 MAX_IMAGE_SIDE = int(os.getenv('MAINTIDOC_MAX_IMAGE_SIDE', 512))
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_QUESTION_CHARS = 2000

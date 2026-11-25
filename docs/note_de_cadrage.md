@@ -73,7 +73,7 @@ Données associées :
 | Recherche | Qdrant ; MiniLM multilingue (texte ; BGE-M3 sur une machine plus puissante) ; BM25 ; CLIP (photo → figures) et encodeur de texte CLIP multilingue (question → figures) ; fusion RRF ; reranker multilingue (version fine-tunée évaluée) |
 | Modèle vision-langage | Qwen2.5-VL à poids ouverts, servi par Ollama sur le GPU intégré (3B par défaut ; 7B testé, recommandé sur GPU dédié) ; images des figures retrouvées jointes à la génération |
 | Outils | Serveur MCP de maintenance (SQLite en développement, PostgreSQL en déploiement) |
-| Stockage et suivi | PostgreSQL (métadonnées MCP), MinIO (documents), MLflow ; Docker Compose ; CI GitHub Actions |
+| Stockage et suivi | PostgreSQL (métadonnées documentaires : tables `documents` et `elements` ; tickets et historique MCP), MinIO (documents), MLflow ; Docker Compose ; CI GitHub Actions |
 
 ## 6. Risques et parades
 
